@@ -53,8 +53,8 @@ jobs:
         if: env.exists == 'false'
         uses: docker/build-push-action@v4
         with:
-          context: ./strfry-hoytech
-          file: ./Dockerfile
+          context: strfry-hoytech
+          file: Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
