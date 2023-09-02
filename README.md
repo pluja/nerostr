@@ -64,8 +64,8 @@ wget -o .env https://raw.githubusercontent.com/pluja/nerostr/master/example.env
 wget -o strfry.conf https://raw.githubusercontent.com/pluja/nerostr/master/strfry/strfry.conf
 ```
 
-[!WARNING]
-You can change the `strfry` config as you want, but you must make sure to have the `plugin = "/app/nerostr-auth.sh"` line in the `writePolicy` section. If you don't have this, the paywall won't do anything and all events will be accepted by the relay.
+> **Warning**
+> You can change the `strfry` config as you want, but you must make sure to have the `plugin = "/app/nerostr-auth.sh"` line in the `writePolicy` section. If you don't have this, the paywall won't do anything and all events will be accepted by the relay.
 
 ### Reverse proxies examples
 
