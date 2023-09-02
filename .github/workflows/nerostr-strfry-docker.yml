@@ -15,20 +15,13 @@ jobs:
       - name: Check for new tags in hoytech/strfry
         run: |
           #!/bin/bash
-          curl -s https://api.github.com/repos/hoytech/strfry/tags
           latest_tag=$(curl -s https://api.github.com/repos/hoytech/strfry/tags | jq -r '.[0].name')
           echo "latest_tag=$latest_tag" >> $GITHUB_ENV
-      
+
       - name: Check if the new tag exists in DockerHub
         id: check-tag
         run: |
-          #!/bin/bash
-          dockerhub_tags=$(curl -s https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/strfry/tags | jq -r '.results[].name')
-          if echo "${dockerhub_tags}" | grep -q "${{ env.latest_tag }}"; then
-            echo "::set-output name=exists::true"
-          else
-            echo "::set-output name=exists::false"
-          fi
+          echo "::set-output name=exists::true"
 
       - name: Set up QEMU
         if: steps.check-tag.outputs.exists == 'false'
