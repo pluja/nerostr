@@ -49,8 +49,8 @@ jobs:
         if: env.exists == 'false'
         run: git clone https://github.com/hoytech/strfry strfry-hoytech
 
-      - name: Build and push Docker image from hoytech/strfry
-        if: steps.check-tag.outputs.exists == 'false'
+      - name: Build and push pluja/strfry
+        if: env.exists == 'false'
         uses: docker/build-push-action@v4
         with:
           context: ./strfry-hoytech
@@ -63,7 +63,7 @@ jobs:
             strfry:latest
 
 
-      - name: Build and push Docker image
+      - name: Build and push nerostr-strfry
         if: env.exists == 'false'
         uses: docker/build-push-action@v4
         with:
