@@ -1,4 +1,4 @@
-name: nerostr-strfry-dockerhub
+name: nerostr-paywall-dockerhub
 
 on:
   workflow_dispatch:
@@ -30,7 +30,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./nerostr
-          file: Dockerfile
+          file: ./nerostr/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |

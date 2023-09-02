@@ -1,4 +1,4 @@
-name: nerostr-paywall-dockerhub
+name: nerostr-strfry-dockerhub
 
 on:
   workflow_dispatch:
@@ -34,5 +34,4 @@ jobs:
                 platforms: linux/amd64,linux/arm64
                 push: true
                 tags: |
-                  ${{ format('{0}/nerostr-strfry:{1}', secrets.DOCKERHUB_USERNAME, github.event.release.tag_name) }}
                   ${{ format('{0}/nerostr-strfry:latest', secrets.DOCKERHUB_USERNAME) }}
