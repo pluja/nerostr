@@ -1,76 +1,38 @@
-name: strfry-relay-dockerhub
+name: nerostr-paywall-dockerhub
+
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
+  release:
+    types: [published]
 
 jobs:
-  check-and-build:
-    runs-on: ubuntu-latest
+    build:
+        name: Build
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
       
-      - name: Check for new tags in hoytech/strfry
-        run: |
-          #!/bin/bash
-          latest_tag=$(curl -s https://api.github.com/repos/hoytech/strfry/tags | jq -r '.[0].name')
-          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
-
-      - name: Check if the new tag exists in DockerHub
-        id: check-tag
-        run: |
-          #!/bin/bash
-          echo "exists=false" >> $GITHUB_ENV
-          #dockerhub_tags=$(curl -s https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/strfry/tags | jq -r '.results[].name')
-          #if echo "${dockerhub_tags}" | grep -q "${{ env.latest_tag }}"; then
-          #  echo "exists=true" >> $GITHUB_ENV
-          #else
-          #  echo "exists=false" >> $GITHUB_ENV
-          #fi
-
-      - name: Set up QEMU
-        if: env.exists == 'false'
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
-        if: env.exists == 'false'
-        uses: docker/setup-buildx-action@v2
-
-      - name: Login to DockerHub
-        if: env.exists == 'false'
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Clone hoytech/strfry
-        if: env.exists == 'false'
-        run: git clone https://github.com/hoytech/strfry strfry-hoytech
-
-      - name: Build and push pluja/strfry
-        if: env.exists == 'false'
-        uses: docker/build-push-action@v4
-        with:
-          context: ./strfry-hoytech
-          file: ./strfry-hoytech/Dockerfile  # updated path
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ format('{0}/strfry:{1}', secrets.DOCKERHUB_USERNAME, env.latest_tag) }}
-            ${{ format('{0}/strfry:latest', secrets.DOCKERHUB_USERNAME) }}
-            strfry:latest
-
-
-      - name: Build and push nerostr-strfry
-        if: env.exists == 'false'
-        uses: docker/build-push-action@v4
-        with:
-          context: ./strfry
-          file: ./strfry/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ format('{0}/nerostr-strfry:{1}', secrets.DOCKERHUB_USERNAME, env.latest_tag) }}
-            ${{ format('{0}/nerostr-strfry:latest', secrets.DOCKERHUB_USERNAME) }}
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v2
+      
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+      
+            - name: Login to DockerHub
+              uses: docker/login-action@v2
+              with:
+                username: ${{ secrets.DOCKERHUB_USERNAME }}
+                password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+            - name: Build and push Docker image
+              uses: docker/build-push-action@v4
+              with:
+                context: ./strfry
+                file: ./strfry/Dockerfile
+                platforms: linux/amd64,linux/arm64
+                push: true
+                tags: |
+                  ${{ format('{0}/nerostr-strfry:{1}', secrets.DOCKERHUB_USERNAME, github.event.release.tag_name) }}
+                  ${{ format('{0}/nerostr-strfry:latest', secrets.DOCKERHUB_USERNAME) }}

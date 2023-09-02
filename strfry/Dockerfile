@@ -1,4 +1,4 @@
-FROM strfry:latest
+FROM pluja/strfry:latest
 
 # Install dependencies
 RUN apt update
