@@ -50,17 +50,18 @@ jobs:
         run: git clone https://github.com/hoytech/strfry strfry-hoytech
 
       - name: Build and push Docker image from hoytech/strfry
-        if: env.exists == 'false'
+        if: steps.check-tag.outputs.exists == 'false'
         uses: docker/build-push-action@v4
         with:
-          context: strfry-hoytech
-          file: Dockerfile
+          context: ./strfry-hoytech
+          file: ./strfry-hoytech/Dockerfile  # updated path
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ format('{0}/strfry:{1}', secrets.DOCKERHUB_USERNAME, env.latest_tag) }}
             ${{ format('{0}/strfry:latest', secrets.DOCKERHUB_USERNAME) }}
             strfry:latest
+
 
       - name: Build and push Docker image
         if: env.exists == 'false'
