@@ -1,4 +1,4 @@
-name: nerostr-paywall-dockerhub
+name: nerostr-strfry-dockerhub
 
 on:
   workflow_dispatch:
