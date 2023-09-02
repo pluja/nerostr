@@ -55,13 +55,13 @@ wget https://raw.githubusercontent.com/pluja/nerostr/master/docker-compose.yml
 3. Get the `.env` file from this repo and modify all the variables to your needs. Mainly you will have to edit the `MONERO_WALLET_FILENAME` and `MONERO_WALLET_PASSWORD` variables.
 
 ```bash
-wget -o .env https://raw.githubusercontent.com/pluja/nerostr/master/example.env
+curl -fsSL -o .env https://raw.githubusercontent.com/pluja/nerostr/main/example.env
 ```
 
-4. (optional) Get the config file for your the `strfry` relay:
+4. Get the config file for your the `strfry` relay:
 
 ```bash
-wget -o strfry.conf https://raw.githubusercontent.com/pluja/nerostr/master/strfry/strfry.conf
+wget https://raw.githubusercontent.com/pluja/nerostr/master/strfry/strfry.conf
 ```
 
 > **Warning**

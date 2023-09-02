@@ -17,7 +17,7 @@ services:
     image: sethsimmons/simple-monero-wallet-rpc:latest
     command: [
       "--wallet-file",
-      "/home/monero/${MONERO_WALLET_FILENAME}",
+      "${MONERO_WALLET_FILENAME}",
       "--password",
       "${MONERO_WALLET_PASSWORD}",
       "--rpc-bind-port",
@@ -33,7 +33,7 @@ services:
       "1000000"
     ]
     volumes:
-      - ./nerostr_data/wallet/:/home/monero/
+      - ./nerostr_data/wallet/:/home/monero/wallet/
     restart: unless-stopped
     ports:
       - 28081:28081
