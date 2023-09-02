@@ -102,6 +102,6 @@ func main() {
 
 	// START SERVER
 	server := api.NewServer(*listenAddr, dabs)
-	go monitor.MonitorInvoices(server, time.Minute*120, int64(*expireInvoice))
+	go monitor.MonitorInvoices(server, time.Minute*2, int64(*expireInvoice))
 	server.Run()
 }
