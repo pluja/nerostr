@@ -1,5 +1,4 @@
-name: Check for new tags and build Docker image
-
+name: strfry - Build and push Docker image
 on:
   workflow_dispatch:
   schedule:

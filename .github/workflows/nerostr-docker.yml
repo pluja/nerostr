@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: nerostr - Build and push Docker image
 
 on:
   workflow_dispatch:
