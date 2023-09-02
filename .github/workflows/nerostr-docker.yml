@@ -1,4 +1,4 @@
-name: nerostr - Build and push Docker image
+name: nerostr-paywall-dockerhub
 
 on:
   workflow_dispatch:
