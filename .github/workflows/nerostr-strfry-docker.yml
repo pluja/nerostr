@@ -50,7 +50,7 @@ jobs:
         run: git clone https://github.com/hoytech/strfry strfry-hoytech
 
       - name: Show files in current dir
-        run: ls -al
+        run: tree .
 
       - name: Build and push Docker image from hoytech/strfry
         if: env.exists == 'false'
