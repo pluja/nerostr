@@ -49,6 +49,9 @@ jobs:
         if: env.exists == 'false'
         run: git clone https://github.com/hoytech/strfry strfry-hoytech
 
+      - name: Show files in current dir
+        run: ls -al
+
       - name: Build and push Docker image from hoytech/strfry
         if: env.exists == 'false'
         uses: docker/build-push-action@v4
