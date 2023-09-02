@@ -68,7 +68,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./strfry
-          file: ./Dockerfile
+          file: ./strfry/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
