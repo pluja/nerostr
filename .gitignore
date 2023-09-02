@@ -6,3 +6,4 @@ strfry-db
 .env
 *.override.yml
 nerostr/html/static/style.css.fiber.gz
+style.css
