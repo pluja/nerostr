@@ -49,15 +49,12 @@ jobs:
         if: env.exists == 'false'
         run: git clone https://github.com/hoytech/strfry strfry-hoytech
 
-      - name: Show files in current dir
-        run: tree .
-
       - name: Build and push Docker image from hoytech/strfry
         if: env.exists == 'false'
         uses: docker/build-push-action@v4
         with:
           context: ./strfry-hoytech
-          file: Dockerfile
+          file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -70,7 +67,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./strfry
-          file: Dockerfile
+          file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
