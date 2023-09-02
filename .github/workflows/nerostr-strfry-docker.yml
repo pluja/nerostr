@@ -21,7 +21,7 @@ jobs:
       - name: Check if the new tag exists in DockerHub
         id: check-tag
         run: |
-          echo "::set-output name=exists::true"
+          echo "::set-output name=exists::false"
 
       - name: Set up QEMU
         if: steps.check-tag.outputs.exists == 'false'
