@@ -15,6 +15,7 @@ jobs:
       - name: Check for new tags in hoytech/strfry
         run: |
           #!/bin/bash
+          curl -s https://api.github.com/repos/hoytech/strfry/tags
           latest_tag=$(curl -s https://api.github.com/repos/hoytech/strfry/tags | jq -r '.[0].name')
           echo "latest_tag=$latest_tag" >> $GITHUB_ENV
       
