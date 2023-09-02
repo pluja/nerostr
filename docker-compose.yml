@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  strfry-nerostr-relay:
+    container_name: nerostr-strfry-relay
+    image: pluja/nerostr-strfry:latest
+    environment:
+      - API_URL=http://nerostr:8080
+    volumes:
+      - ./strfry.conf:/etc/strfry.conf
+      - ./nerostr_data/strfry/strfry-db:/app/strfry-db
+
+  monero-wallet-rpc:
+    container_name: nerostr-monero-wallet-rpc
+    env_file: 
+      - .env
+    image: sethsimmons/simple-monero-wallet-rpc:latest
+    command: [
+      "--wallet-file",
+      "/home/monero/${MONERO_WALLET_FILENAME}",
+      "--password",
+      "${MONERO_WALLET_PASSWORD}",
+      "--rpc-bind-port",
+      "28081",
+      "--daemon-host",
+      "${MONERO_DAEMON_RPC_HOSTNAME}",
+      "--daemon-port",
+      "${MONERO_DAEMON_RPC_PORT}",
+      "--disable-rpc-login",
+      "--max-log-files",
+      "1",
+      "--max-log-file-size",
+      "1000000"
+    ]
+    volumes:
+      - ./nerostr_data/wallet/:/home/monero/
+    restart: unless-stopped
+    ports:
+      - 28081:28081
+
+  nerostr:
+    container_name: nerostr-paywall
+    image: pluja/nerostr:latest
+    env_file:
+      - .env
+    volumes:
+      - ./nerostr_data/nerostr/nerostr-db:/app/nerostr_data/db
+    ports:
+      - "8089:8080"
+    depends_on:
+      - strfry-nerostr-relay
+      - monero-wallet-rpc

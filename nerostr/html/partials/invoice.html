@@ -1,0 +1,18 @@
+<div class="py-4">
+    <img 
+        class="py-3 mx-auto rounded-lg"
+        src="data:image/png;base64,{{.User.GetAddreessQrCodeDataUrl}}" 
+        alt="qr code for the monero payment"
+    >
+    <div class="max-w-sm p-2 my-2 overflow-auto">
+        <p class="mt-1 text-center text-gray-600">{{.User.Address}}</p>
+    </div>    
+
+    <div class="flex flex-col items-center justify-center space-y-1">
+        <p class="mt-4 text-xs text-gray-700">Pay {{.User.Amount}} or more to the above address to get your pubkey whitelisted. </p>
+        <p class="text-xs text-gray-700 ">After 2 confirmations, it will get added to the whitelist automatically.</p>
+        <a class="pt-4 text-xs text-center text-gray-700 underline" href="/user/{{.User.PubKey}}?recheck=true">force check payment</a>
+    </div>
+
+
+</div>

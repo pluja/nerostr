@@ -1,0 +1,8 @@
+node_modules
+nerostr/nerostr_data/db
+nerostr_data
+wallet
+strfry-db
+.env
+*.override.yml
+nerostr/html/static/style.css.fiber.gz

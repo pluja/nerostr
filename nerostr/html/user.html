@@ -1,0 +1,26 @@
+<div class="flex flex-col items-center justify-center">
+    <div class="max-w-md p-6 overflow-x-hidden bg-gray-200 rounded-lg">
+
+        <h2 class="flex items-center justify-center space-x-2 font-mono text-center text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-circle-key" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                <path d="M14 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path>
+                <path d="M21 12a9 9 0 1 1 -18 0a9 9 0 0 1 18 0z"></path>
+                <path d="M12.5 11.5l-4 4l1.5 1.5"></path>
+                <path d="M12 15l-1.5 -1.5"></path>
+             </svg>
+             <span>
+                 {{.User.GetShortPubKey}}
+             </span>
+        </h2>
+        <h2 class="mt-1 font-mono text-xs text-center text-gray-600">
+            <span>status:</span> <span>{{.User.ParseStatus}}</span>
+        </h2>
+
+        {{if eq .User.Status 0}}
+            {{template "partials/invoice" .}}
+        {{else}}
+            {{template "partials/user" .}}
+        {{end}}
+    </div>
+</div>
