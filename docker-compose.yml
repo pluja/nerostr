@@ -35,8 +35,6 @@ services:
     volumes:
       - ./nerostr_data/wallet/:/home/monero/wallet/
     restart: unless-stopped
-    ports:
-      - 28081:28081
 
   nerostr:
     container_name: nerostr-paywall
