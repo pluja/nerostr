@@ -126,3 +126,32 @@ func (bdb BadgerDB) GetNewUsers() ([]models.User, error) {
 	}
 	return users, nil
 }
+
+func (bdb BadgerDB) GetUserCount() (int, error) {
+	var count int
+	err := bdb.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 10
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			var user models.User
+			err := item.Value(func(val []byte) error {
+				return json.Unmarshal(val, &user)
+			})
+			if err != nil {
+				return err
+			}
+			if user.Status == models.UserStatusPaid {
+				count++
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}

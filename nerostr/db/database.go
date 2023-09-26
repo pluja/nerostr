@@ -8,5 +8,6 @@ type Db interface {
 	UpdateUser(user models.User) error
 	DeleteUser(pubkey string) error
 	GetNewUsers() ([]models.User, error)
+	GetUserCount() (int, error)
 	Close() error
 }

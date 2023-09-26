@@ -1,3 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+    font-family: 'monocraft'; /* Give a name to your font */
+    src: url('./fonts/Monocraft.ttf') format('truetype');
+}

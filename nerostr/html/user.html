@@ -1,7 +1,6 @@
-<div class="flex flex-col items-center justify-center">
-    <div class="max-w-md p-6 overflow-x-hidden bg-gray-200 rounded-lg">
-
-        <h2 class="flex items-center justify-center space-x-2 font-mono text-center text-gray-700">
+<div class="flex flex-col items-center justify-center my-8">
+    <div class="max-w-md p-5 border-4 border-zinc-700 bg-zinc-900">
+        <h2 class="flex items-center justify-center space-x-2 text-center text-zinc-300">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-circle-key" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                 <path d="M14 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path>
@@ -13,8 +12,12 @@
                  {{.User.GetShortPubKey}}
              </span>
         </h2>
-        <h2 class="mt-1 font-mono text-xs text-center text-gray-600">
-            <span>status:</span> <span>{{.User.ParseStatus}}</span>
+        <h2 class="mt-1 text-sm font-bold text-center text-zinc-400">
+            {{if eq .User.Status 0}}
+                <span><span class="text-yellow-600">{{.User.ParseStatus}}</span>
+            {{else}}
+                <span><span class="text-green-500">{{.User.ParseStatus}}</span>
+            {{end}}
         </h2>
 
         {{if eq .User.Status 0}}
