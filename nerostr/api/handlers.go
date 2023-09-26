@@ -17,9 +17,11 @@ func (s *Server) handleNewUser(c *fiber.Ctx) error {
 	pubkey := c.FormValue("pkey")
 	if pubkey == "" {
 		log.Error().Msg("Pubkey is required")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "pkey is required",
+		// Add error message to session
+		c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "pubkey is required",
 		})
+		return c.Redirect("/")
 	}
 
 	// Check if user exists in database
@@ -118,8 +120,14 @@ func (s *Server) handleGetUser(c *fiber.Ctx) error {
 }
 
 func (s *Server) handleIndexPage(c *fiber.Ctx) error {
+	userCount, err := s.Db.GetUserCount()
+	if err != nil {
+		log.Debug().Err(err).Msg("Error getting user count")
+		userCount = -1
+	}
 	return c.Render("index", fiber.Map{
-		"Title": "Nerostr Relay",
+		"Title":     "Nerostr Relay",
+		"UserCount": userCount,
 	}, "base")
 }
 
