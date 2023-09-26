@@ -1,8 +1,8 @@
 FROM pluja/strfry:latest
 
 # Install dependencies
-RUN apt update
-RUN apt install curl jq -y
+RUN apk update
+RUN apk add curl jq
 
 # Copy over the plugin
 WORKDIR /app
