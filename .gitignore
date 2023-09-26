@@ -7,3 +7,4 @@ strfry-db
 *.override.yml
 nerostr/html/static/style.css.fiber.gz
 style.css
+nerostr/html/static/fonts/Monocraft.ttf.fiber.gz

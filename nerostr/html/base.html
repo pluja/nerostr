@@ -3,14 +3,25 @@
   <head>
     <title>{{.Title}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="shortcut icon" href="/static/assets/favicon.ico" sizes="any" type="image/x-icon">
-    <link rel="shortcut icon" href="/static/assets/favicon.ico" type="image/x-icon">
+    <meta name="keywords" content="nostr,relay,monero,xmr,strfry,pluja">
+    <link rel="shortcut icon" href="/static/assets/nerostr.webp" sizes="any" type="image/webp">
+    <link rel="shortcut icon" href="/static/assets/nerostr.webp" type="image/webp">
     <link rel="stylesheet" href="/static/style.css">
+    <!-- Social Sharing -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="{{.Title}}" />
+    <meta property="og:description" content="{{.Description}}" />
+    <meta property="og:image" content="https://{{.Host}}/static/assets/nerostr.webp" />
+    <meta itemprop="name" content="{{.Title}}">
+    <meta itemprop="description" content="{{.Description}}">
+    <meta itemprop="image" content="https://{{.Host}}/static/assets/nerostr.webp">
+    <meta name="twitter:url" content="{{.Host}}">
+    <meta name="twitter:title" content="{{.Title}}">
+    <meta name="twitter:description" content="{{.Description}}">
+    <meta name="twitter:image" content="https://{{.Host}}/static/assets/nerostr.webp">
   </head>
 
-  <body class="flex flex-col items-center justify-center min-h-screen bg-zinc-900 font-monocraft">
+  <body class="flex flex-col items-center justify-center min-h-screen py-4 bg-zinc-900 font-monocraft">
     <div class="px-3 pb-1">
         <div class="flex flex-col items-center justify-center space-y-2">
           <a class="flex flex-col items-center justify-center" href="/">
