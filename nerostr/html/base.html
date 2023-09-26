@@ -8,16 +8,17 @@
     <link rel="shortcut icon" href="/static/assets/nerostr.webp" type="image/webp">
     <link rel="stylesheet" href="/static/style.css">
     <!-- Social Sharing -->
+    {{ $Description := "Nerostr is a Nostr paid relay, but with Monero. Avoid spam. Get quality content." }}
     <meta property="og:type" content="website" />
     <meta property="og:title" content="{{.Title}}" />
-    <meta property="og:description" content="{{.Description}}" />
+    <meta property="og:description" content="{{$Description}}" />
     <meta property="og:image" content="https://{{.Host}}/static/assets/nerostr.webp" />
     <meta itemprop="name" content="{{.Title}}">
-    <meta itemprop="description" content="{{.Description}}">
+    <meta itemprop="description" content="{{$Description}}">
     <meta itemprop="image" content="https://{{.Host}}/static/assets/nerostr.webp">
     <meta name="twitter:url" content="{{.Host}}">
     <meta name="twitter:title" content="{{.Title}}">
-    <meta name="twitter:description" content="{{.Description}}">
+    <meta name="twitter:description" content="{{$Description}}">
     <meta name="twitter:image" content="https://{{.Host}}/static/assets/nerostr.webp">
   </head>
 
