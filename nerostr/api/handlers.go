@@ -89,9 +89,10 @@ func (s *Server) handleGetUser(c *fiber.Ctx) error {
 	// Get pubkey from url param
 	pubkey := c.Params("pkey")
 	if pubkey == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "pkey is required",
+		c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "pubkey is required",
 		})
+		return c.Redirect("/")
 	}
 
 	npub, err := utils.PrasePubKey(pubkey)
@@ -116,6 +117,7 @@ func (s *Server) handleGetUser(c *fiber.Ctx) error {
 	return c.Render("user", fiber.Map{
 		"Title": "Nerostr User Page",
 		"User":  &user,
+		"Host":  os.Getenv("NEROSTR_HOST"),
 	}, "base")
 }
 
@@ -128,6 +130,7 @@ func (s *Server) handleIndexPage(c *fiber.Ctx) error {
 	return c.Render("index", fiber.Map{
 		"Title":     "Nerostr Relay",
 		"UserCount": userCount,
+		"Host":      os.Getenv("NEROSTR_HOST"),
 	}, "base")
 }
 
