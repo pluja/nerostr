@@ -9,16 +9,20 @@ Everyone is free to read, but only paid users can publish events.
 
 ## Contents
 
-- [Features](#features)
-- [Why?](#why)
-- [Self-hosting your own relay](#self-hosting-your-own-relay)
+- [nerostr: a nostr monero-paid relay](#nerostr-a-nostr-monero-paid-relay)
+  - [Contents](#contents)
+  - [Features](#features)
+  - [Why?](#why)
+  - [Self-hosting your own relay](#self-hosting-your-own-relay)
     - [Reverse proxies examples](#reverse-proxies-examples)
-- [How it works](#brief-explanation-of-how-it-works)
-- [Nerostr API](#api)
+      - [Caddy](#caddy)
+      - [Nginx](#nginx)
+  - [Brief explanation of how it works](#brief-explanation-of-how-it-works)
+  - [API](#api)
     - [Whitelist a pubkey](#whitelist-a-pubkey)
     - [Remove a pubkey from the whitelist](#remove-a-pubkey-from-the-whitelist)
-- [Migrating from previous versions](#migrating-from-previous-versions)
-- [Support this project](#-support-this-project)
+  - [Migrating from previous versions](#migrating-from-previous-versions)
+  - [🧡 Support this project](#-support-this-project)
 
 ## Features
 
@@ -52,7 +56,7 @@ wget https://raw.githubusercontent.com/pluja/nerostr/master/docker-compose.yml
 2. Create a new Monero wallet, get the `wallet` and `wallet.keys` files and put them in `./nerostr_data/wallet/` folder.
     - You can use the `monero-wallet-cli` to create a new wallet, or use [Feather Wallet](https://moneroaddress.org/) for a GUI wallet.
 
-3. Get the `.env` file from this repo and modify all the variables to your needs. Mainly you will have to edit the `MONERO_WALLET_FILENAME` and `MONERO_WALLET_PASSWORD` variables.
+3. Get the `.env` file from this repo and modify all the variables to your needs. Mainly you will have to edit the `NEROSTR_HOST`, `MONERO_WALLET_FILENAME` and `MONERO_WALLET_PASSWORD` variables.
 
 ```bash
 curl -fsSL -o .env https://raw.githubusercontent.com/pluja/nerostr/main/example.env
