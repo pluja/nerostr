@@ -3,6 +3,6 @@
 @tailwind utilities;
 
 @font-face {
-    font-family: 'monocraft', 'mono'; /* Give a name to your font */
-    src: url('./fonts/Monocraft.ttf') format('truetype');
+    font-family: 'monocraft'; /* Give a name to your font */
+    src: url('./fonts/monocraft.ttf') format('truetype');
 }
