@@ -5,7 +5,5 @@ wallet
 strfry-db
 .env
 *.override.yml
-nerostr/html/static/style.css.fiber.gz
 style.css
-nerostr/html/static/fonts/Monocraft.ttf.fiber.gz
-nerostr/html/static/fonts/monocraft.ttf.fiber.gz
+*.fiber.gz
