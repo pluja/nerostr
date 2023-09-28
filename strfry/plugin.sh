@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 API_HOST=${API_URL:-'nerostr:8080'}
 
 while IFS= read -r line; do
