@@ -84,7 +84,7 @@ xmr.usenostr.org {
 		header Upgrade	websocket
 	}
 
-	reverse_proxy @websockets strfry-nerostr-relay:8080
+	reverse_proxy @websockets strfry-nerostr-relay:7777
 	reverse_proxy nerostr:8080
 }
 ```
@@ -104,7 +104,7 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_pass http://strfry-nerostr-relay:8080;
+        proxy_pass http://strfry-nerostr-relay:7777;
     }
 }
 ```
