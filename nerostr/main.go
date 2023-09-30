@@ -24,7 +24,7 @@ func main() {
 	apiKey := flag.String("api-key", "", "api key")
 	listenAddr := flag.String("listen", ":8080", "server listen address")
 	rootDir := flag.String("root", "/app/", "root directory")
-	xmrWalletRpc := flag.String("monero-wallet-rpc-url", "http://monero-wallet-rpc:28081/json_rpc", "url for the monero rpc server")
+	xmrWalletRpc := flag.String("monero-wallet-rpc-url", "http://monero-wallet-rpc:18083/json_rpc", "url for the monero rpc server")
 	nerostrHost := flag.String("host-domain", "localhost:8080", "nerostr host")
 	dev := flag.Bool("dev", false, "development mode")
 	testnet := flag.Bool("testnet", false, "use testnet")
