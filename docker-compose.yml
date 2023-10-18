@@ -9,6 +9,7 @@ services:
     volumes:
       - ./strfry.conf:/etc/strfry.conf
       - ./nerostr_data/strfry/strfry-db:/app/strfry-db
+    restart: unless-stopped
 
   monero-wallet-rpc:
     container_name: nerostr-monero-wallet-rpc
@@ -48,3 +49,4 @@ services:
     depends_on:
       - strfry-nerostr-relay
       - monero-wallet-rpc
+    restart: unless-stopped
