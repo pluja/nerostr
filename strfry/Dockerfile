@@ -9,3 +9,5 @@ WORKDIR /app
 COPY ./strfry.conf /etc/strfry.conf
 COPY ./plugin.sh /app/nerostr-auth.sh
 RUN chmod +x /app/nerostr-auth.sh
+
+EXPOSE 7777
