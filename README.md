@@ -194,3 +194,13 @@ This will add all the pubkeys to the whitelist database.
 ## 🧡 Support this project
 
 [kycnot.me/about#support](https://kycnot.me/about#support)
+
+## Known Nerostr Relays
+
+| Relay | Paywall | Status and Info |
+|-----------|----------|------------|
+|wss://xmr.usenostr.org|[xmr.usenostr.org](https://xmr.usenostr.org)|[info](https://nostr.watch/relay/xmr.usenostr.org)|
+|wss://nostr.portemonero.com|[nostr.portemonero.com](https://nostr.portemonero.com)|[info](https://nostr.watch/relay/nostr.portemonero.com)|
+|wss://xmr.ithurtswhenip.ee|[xmr.ithurtswhenip.ee](https://xmr.ithurtswhenip.ee)|[info](https://nostr.watch/relay/xmr.ithurtswhenip.ee)|
+|wss://nostr.xmr.rocks|[nostr.xmr.rocks](https://nostr.xmr.rocks)|[info](https://nostr.watch/relay/nostr.xmr.rocks)|
+
