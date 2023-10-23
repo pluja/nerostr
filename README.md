@@ -23,6 +23,7 @@ Everyone is free to read, but only paid users can publish events.
     - [Remove a pubkey from the whitelist](#remove-a-pubkey-from-the-whitelist)
   - [Migrating from previous versions](#migrating-from-previous-versions)
   - [🧡 Support this project](#-support-this-project)
+  - [List of nerostr relays](#known-nerostr-relays)
 
 ## Features
 
