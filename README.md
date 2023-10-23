@@ -84,6 +84,13 @@ xmr.usenostr.org {
 		header Upgrade	websocket
 	}
 
+        @json {
+		header Accept application/nostr+json
+	}
+
+	reverse_proxy @json strfry-nerostr-relay:7777 {
+		header_up Accept application/nostr+json
+	}
 	reverse_proxy @websockets strfry-nerostr-relay:7777
 	reverse_proxy nerostr:8080
 }
