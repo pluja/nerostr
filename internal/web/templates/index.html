@@ -1,0 +1,42 @@
+{{define "content"}}
+<section class="card join">
+  <h2>Get write access</h2>
+  <p class="muted">One-time payment of <strong>{{.Amount}} XMR</strong>. Your key can publish here forever.</p>
+  {{with .Error}}<p class="alert" role="alert">{{.}}</p>{{end}}
+  <form action="/user" method="post" id="join-form">
+    <label for="pkey">Your nostr public key</label>
+    <input id="pkey" name="pkey" type="text" required autocomplete="off" autocapitalize="off" spellcheck="false"
+           placeholder="npub1…">
+    <div class="actions">
+      <button type="submit" class="primary">Pay to relay</button>
+      <button type="button" class="secondary" id="use-extension" hidden>Use my nostr extension</button>
+    </div>
+  </form>
+  <p class="hint">Already paid? Enter your key to see your status.</p>
+</section>
+
+<p class="stat">{{.Members}} {{if eq .Members 1}}member{{else}}members{{end}} can publish here</p>
+
+<section class="grid">
+  <article class="card">
+    <h3>How it works</h3>
+    <ol>
+      <li>Enter your public key (npub).</li>
+      <li>Send the amount to the Monero address you get.</li>
+      <li>Once it confirms, publish to <code>{{.RelayURL}}</code> from any nostr client.</li>
+    </ol>
+  </article>
+  <article class="card">
+    <h3>Why pay to relay?</h3>
+    <p>Publishing costs a little, so spammers and bots stay out. You get a clean global feed. Reading is always free for everyone.</p>
+  </article>
+  <article class="card">
+    <h3>Why Monero?</h3>
+    <p>Payments are private. Each invoice gets its own subaddress, so payments can't be linked on the blockchain.</p>
+  </article>
+  <article class="card">
+    <h3>What is nostr?</h3>
+    <p>An open protocol for censorship-resistant social media. <a href="https://usenostr.org">Learn more</a>.</p>
+  </article>
+</section>
+{{end}}

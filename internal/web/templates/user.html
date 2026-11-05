@@ -1,0 +1,77 @@
+{{define "content"}}
+<section class="card account">
+  <p class="key"><span class="muted">key</span> <code title="{{.Npub}}">{{.Short}}</code></p>
+
+  {{if eq .State "member"}}
+  <div class="done">
+    <svg viewBox="0 0 24 24" width="72" height="72" aria-hidden="true"><path fill="currentColor" d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+    <h2>You're in</h2>
+    <p>Add <code>{{.RelayURL}}</code> to your client's relay list and publish away.</p>
+    <p class="muted">Member since {{.Member.CreatedAt.Format "2 Jan 2006"}}.</p>
+  </div>
+
+  {{else if eq .State "banned"}}
+  <h2>Access revoked</h2>
+  <p>This key is banned from this relay. If you think this is a mistake, contact the operator.</p>
+
+  {{else if eq .State "invoice"}}
+  {{with .Invoice}}
+  <div class="invoice" data-status-url="{{.StatusURL}}" data-check-url="{{.CheckURL}}">
+    <h2 id="status-title">{{if .Pending}}Payment received{{else if .SeenAny}}Partial payment received{{else}}Waiting for payment{{end}}</h2>
+    <p id="status-text" class="muted" aria-live="polite">
+      {{if .Pending}}Waiting for {{.Confirmations}} confirmation{{if ne .Confirmations 1}}s{{end}} (about {{if eq .Confirmations 1}}2{{else}}{{.Confirmations}}×2{{end}} minutes). You can close this page.
+      {{else if .SeenAny}}Received {{.Seen}} XMR. Send the remaining <strong>{{.Remaining}} XMR</strong> to the same address.
+      {{else}}Send <strong>{{.Amount}} XMR</strong> or more to the address below.{{end}}
+    </p>
+
+    <a class="qr" href="{{.URI}}"><img src="{{.QRURL}}" width="240" height="240" alt="QR code with the Monero payment request"></a>
+
+    <dl class="pay">
+      <dt>Amount</dt>
+      <dd><code>{{.Amount}}</code> XMR <button type="button" class="copy" data-copy="{{.Amount}}">copy</button></dd>
+      <dt>Address</dt>
+      <dd><code class="address">{{.Address}}</code> <button type="button" class="copy" data-copy="{{.Address}}">copy</button></dd>
+    </dl>
+
+    <div class="actions">
+      <a class="button primary" href="{{.URI}}">Open in wallet</a>
+      <form action="{{.CheckURL}}" method="post"><button type="submit" class="secondary">I've paid, check now</button></form>
+    </div>
+
+    <p class="hint">
+      This invoice expires <span data-expires="{{.ExpiresAt}}">in about an hour</span>.
+      Payments arriving later are still credited {{if .LateDays}}for {{.LateDays}} day{{if ne .LateDays 1}}s{{end}}{{else}}for a few hours{{end}}.
+      Partial payments add up.
+    </p>
+  </div>
+  {{end}}
+
+  {{else if eq .State "expired"}}
+  {{with .Invoice}}
+  {{if .SeenAny}}
+  <div id="invoice" data-status-url="{{.StatusURL}}">
+    <h2>Payment detected</h2>
+    {{if .Pending}}
+    <p class="muted" aria-live="polite">Received {{.Seen}} XMR. Waiting for confirmation; this page updates by itself.</p>
+    {{else}}
+    <p class="muted" aria-live="polite">Received {{.Seen}} of {{.Amount}} XMR. It still counts: send the remaining <strong>{{.Remaining}} XMR</strong> to the same address.</p>
+    <dl class="pay">
+      <dt>Address</dt>
+      <dd><code class="address">{{.Address}}</code> <button type="button" class="copy" data-copy="{{.Address}}">copy</button></dd>
+    </dl>
+    {{end}}
+  </div>
+  {{else}}
+  <h2>Invoice expired</h2>
+  <p class="muted">If you already sent a payment to <code class="address">{{.Address}}</code>, it will be credited automatically once it confirms. Otherwise, get a new invoice:</p>
+  <form action="/user" method="post"><input type="hidden" name="pkey" value="{{$.Npub}}"><button type="submit" class="primary">New invoice</button></form>
+  {{end}}
+  {{end}}
+
+  {{else}}
+  <h2>No access yet</h2>
+  <p class="muted">Publishing here takes a one-time payment of {{.Amount}} XMR.</p>
+  <form action="/user" method="post"><input type="hidden" name="pkey" value="{{.Npub}}"><button type="submit" class="primary">Get an invoice</button></form>
+  {{end}}
+</section>
+{{end}}

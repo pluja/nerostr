@@ -1,0 +1,156 @@
+@font-face {
+  font-family: "monocraft";
+  src: url("/static/monocraft.ttf") format("truetype");
+  font-display: swap;
+}
+
+:root {
+  --bg: #18181b;
+  --panel: #1f1f23;
+  --border: #3f3f46;
+  --text: #e4e4e7;
+  --muted: #a1a1aa;
+  --dim: #71717a;
+  --accent: #ea580c;
+  --accent-hover: #c2410c;
+  --ok: #22c55e;
+  --warn: #eab308;
+  --error: #f87171;
+}
+
+* { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.6 "monocraft", ui-monospace, monospace;
+}
+
+a { color: inherit; }
+a:hover { color: var(--accent); }
+
+code {
+  font-family: inherit;
+  background: #27272a;
+  padding: 0.05rem 0.35rem;
+  border-radius: 2px;
+}
+
+header { text-align: center; max-width: 36rem; }
+.brand { display: inline-flex; flex-direction: column; align-items: center; text-decoration: none; }
+.brand h1 { margin: 0.75rem 0 0; color: var(--accent); font-size: 2rem; line-height: 1.2; }
+.tagline { color: var(--muted); margin: 0.5rem 0 1rem; }
+
+.relay-url {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 2px solid var(--border);
+  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+}
+.relay-url code { background: none; padding: 0; }
+
+main { width: 100%; max-width: 44rem; margin: 1.5rem 0; }
+
+.card {
+  border: 2px solid var(--border);
+  background: var(--panel);
+  padding: 1.25rem;
+}
+.card h2, .card h3 { margin: 0 0 0.5rem; font-size: 1.15rem; color: var(--text); }
+.card h3 { font-size: 1rem; }
+.card p, .card ol { margin: 0.5rem 0; color: var(--muted); }
+.card ol { padding-left: 1.25rem; }
+
+.join { max-width: 32rem; margin: 0 auto; }
+.account { max-width: 32rem; margin: 0 auto; text-align: center; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.grid .card p, .grid .card ol { font-size: 0.9rem; }
+
+.stat { text-align: center; color: var(--muted); margin: 1.5rem 0; }
+
+label { display: block; margin: 1rem 0 0.35rem; color: var(--muted); font-size: 0.9rem; }
+
+input[type="text"] {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 2px solid var(--border);
+  border-radius: 2px;
+  font: inherit;
+}
+input[type="text"]:focus { outline: none; border-color: var(--accent); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; margin-top: 1rem; }
+.actions form { margin: 0; }
+
+button, .button {
+  display: inline-block;
+  padding: 0.55rem 1rem;
+  font: inherit;
+  font-weight: bold;
+  color: var(--text);
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  text-decoration: none;
+}
+button:hover, .button:hover { color: var(--text); border-color: var(--accent); }
+button:focus-visible, .button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+
+button.copy {
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: normal;
+  color: var(--muted);
+}
+button.copy.copied { color: var(--ok); border-color: var(--ok); }
+
+.muted { color: var(--muted); }
+.hint { color: var(--dim); font-size: 0.85rem; margin-top: 1rem; }
+.alert { border: 2px solid var(--error); color: var(--error); padding: 0.5rem 0.75rem; }
+
+.key { margin: 0 0 1rem; }
+
+.done { color: var(--ok); }
+.done h2 { color: var(--ok); }
+.done p { color: var(--muted); }
+
+.qr { display: inline-block; margin: 1rem 0; background: #fff; padding: 0.5rem; line-height: 0; }
+.qr img { width: 240px; height: 240px; image-rendering: pixelated; }
+
+.pay { text-align: left; margin: 0.5rem 0; }
+.pay dt { color: var(--dim); font-size: 0.8rem; margin-top: 0.75rem; }
+.pay dd { margin: 0.2rem 0 0; }
+.address { word-break: break-all; font-size: 0.85rem; }
+
+#status-title.ok { color: var(--ok); }
+#status-title.pending { color: var(--warn); }
+
+footer { margin-top: auto; padding-top: 2rem; color: var(--dim); font-size: 0.8rem; text-align: center; }
+
+@media (max-width: 30rem) {
+  body { padding: 1.25rem 0.75rem; font-size: 14px; }
+  .brand h1 { font-size: 1.6rem; }
+  .relay-url { font-size: 0.85rem; }
+}
