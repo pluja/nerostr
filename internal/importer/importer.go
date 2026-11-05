@@ -16,6 +16,7 @@ import (
 	"fiatjaf.com/nostr/eventstore"
 	"github.com/dgraph-io/badger/v4"
 
+	"github.com/pluja/nerostr/internal/flood"
 	"github.com/pluja/nerostr/internal/pubkey"
 	"github.com/pluja/nerostr/internal/store"
 )
@@ -23,13 +24,16 @@ import (
 const maxLine = 4 << 20
 
 type EventStats struct {
-	Imported, Duplicates, Invalid, Skipped int
+	Imported, Duplicates, Invalid, Skipped, Repeats int
 }
 
 // ImportEvents reads newline-delimited JSON events (as written by `strfry export`)
-// and stores the valid ones. Every event's id and signature are re-verified.
+// and stores the valid ones. Every event's id and signature are re-verified, and
+// the relay's flood rule applies: a top-level note repeating the same author's
+// text within an hour is skipped, so the first copy is the one kept.
 func ImportEvents(r io.Reader, events eventstore.Store, log *slog.Logger) (EventStats, error) {
 	var st EventStats
+	repeats := flood.NewGuard(events)
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 64<<10), maxLine)
 	line := 0
@@ -51,6 +55,10 @@ func ImportEvents(r io.Reader, events eventstore.Store, log *slog.Logger) (Event
 		}
 		if evt.Kind.IsEphemeral() {
 			st.Skipped++
+			continue
+		}
+		if repeats.Repeat(evt) {
+			st.Repeats++
 			continue
 		}
 		var err error

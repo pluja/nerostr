@@ -597,3 +597,29 @@ func TestInbox(t *testing.T) {
 }
 
 const maxRecipientsForTest = 20
+
+func TestFloodGuard(t *testing.T) {
+	e := setup(t)
+	member := nostr.Generate()
+	e.store.AddMember(context.Background(), member.Public(), store.SourceAdmin, "")
+	r := e.connect(t)
+
+	first := note(t, member, 1, "Issue 201 is out", nil)
+	if err := publish(t, r, first); err != nil {
+		t.Fatal(err)
+	}
+	if err := publish(t, r, first); err != nil {
+		t.Fatalf("re-sending the same event must stay harmless: %v", err)
+	}
+	repeat := nostr.Event{Kind: 1, CreatedAt: first.CreatedAt + 90, Content: first.Content}
+	if err := repeat.Sign(member); err != nil {
+		t.Fatal(err)
+	}
+	if err := publish(t, r, repeat); err == nil || !strings.Contains(err.Error(), "duplicate:") {
+		t.Fatalf("a repeated top-level note must be refused, got %v", err)
+	}
+	reply := note(t, member, 1, "Issue 201 is out", nostr.Tags{{"e", first.ID.Hex()}})
+	if err := publish(t, r, reply); err != nil {
+		t.Fatalf("the same text as a reply is fine: %v", err)
+	}
+}

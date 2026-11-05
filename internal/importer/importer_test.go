@@ -37,6 +37,8 @@ func TestImportEvents(t *testing.T) {
 
 	sk := nostr.Generate()
 	note := signed(t, sk, 1, "hello", 1000)
+	flooded := signed(t, sk, 1, "hello", 1060)
+	later := signed(t, sk, 1, "hello", 1000+3600*2)
 	oldProfile := signed(t, sk, 0, `{"name":"old"}`, 1000)
 	newProfile := signed(t, sk, 0, `{"name":"new"}`, 2000)
 	ephemeral := signed(t, sk, 20001, "", 1000)
@@ -44,7 +46,7 @@ func TestImportEvents(t *testing.T) {
 	tampered.Content = "tampered"
 
 	var lines []string
-	for _, e := range []nostr.Event{note, note, oldProfile, newProfile, ephemeral, tampered} {
+	for _, e := range []nostr.Event{note, note, flooded, later, oldProfile, newProfile, ephemeral, tampered} {
 		b, _ := json.Marshal(e)
 		lines = append(lines, string(b))
 	}
@@ -54,7 +56,7 @@ func TestImportEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := EventStats{Imported: 3, Duplicates: 1, Invalid: 2, Skipped: 1}
+	want := EventStats{Imported: 4, Duplicates: 1, Invalid: 2, Skipped: 1, Repeats: 1}
 	if st != want {
 		t.Fatalf("stats = %+v, want %+v", st, want)
 	}

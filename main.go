@@ -266,7 +266,7 @@ func importEvents(args []string) error {
 	start := time.Now()
 	stats, err := importer.ImportEvents(in, events, log)
 	log.Info("import finished", "imported", stats.Imported, "duplicates", stats.Duplicates,
-		"invalid", stats.Invalid, "skipped_ephemeral", stats.Skipped, "took", time.Since(start).Round(time.Second))
+		"invalid", stats.Invalid, "skipped_ephemeral", stats.Skipped, "skipped_repeats", stats.Repeats, "took", time.Since(start).Round(time.Second))
 	return err
 }
 

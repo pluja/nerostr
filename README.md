@@ -33,6 +33,7 @@ Everyone can read. Only people who paid a small one-time fee in Monero can publi
   - Also supported: NIP-09 deletions, NIP-40 expiration, NIP-42 auth, NIP-45 counts, NIP-70 protected events and NIP-77 negentropy sync.
 - **Hardened by default.**
   - Per-IP and per-key rate limits, with trusted-proxy aware client IPs.
+  - A flood guard that stops a looping bot or bridge from reposting the same note.
   - A strict Content-Security-Policy.
   - Non-root, read-only containers.
   - The wallet RPC sits on an internal network behind a password.
@@ -47,6 +48,10 @@ Everyone can read. Only people who paid a small one-time fee in Monero can publi
 4. Members can publish. Everyone else gets `restricted: pay the one-time admission fee at https://…` from the relay, which most clients show to the user.
 
 Reading is always free. Former members can still delete their own events.
+
+Top-level notes that repeat the author's own text are refused with `duplicate:`. A repeat means the same text was
+seen less than an hour before, counting refused copies too, so a stuck bot stays blocked until it pauses.
+Replies are never affected, so answering many people with the same "Good morning!" is fine.
 
 ### Inbox
 
@@ -233,7 +238,8 @@ The steps assume your v1 directory is `~/nerostr` (with `nerostr_data/`) and v2 
    - set a new `MONERO_WALLET_RPC_PASSWORD`;
    - keep `API_KEY` if you used the v1 API.
 
-3. **Import events** while v1 is still serving. It is safe to repeat (duplicates are skipped) and runs at roughly 600 events/s, so a large relay takes a while:
+3. **Import events** while v1 is still serving. The import re-verifies every signature and applies the same flood rule as the relay, so the first copy of each repeated note is kept.
+   It is safe to repeat (duplicates are skipped). xmr.usenostr.org's 933k events took about 30 minutes, ending at 392k after dropping a 541k-note bridge loop from July 2024:
 
    ```bash
    docker compose run --rm -v ~/nerostr/events.jsonl:/import/events.jsonl:ro nerostr import /import/events.jsonl

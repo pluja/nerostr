@@ -16,6 +16,7 @@ import (
 	"fiatjaf.com/nostr/nip86"
 
 	"github.com/pluja/nerostr/internal/config"
+	"github.com/pluja/nerostr/internal/flood"
 	"github.com/pluja/nerostr/internal/pubkey"
 	"github.com/pluja/nerostr/internal/store"
 )
@@ -38,6 +39,7 @@ type Relay struct {
 	log        *slog.Logger
 	members    *memberCache
 	inboxLimit func(context.Context, nostr.Event) (bool, string)
+	repeats    *flood.Guard
 }
 
 func New(cfg *config.Config, st *store.Store, events eventstore.Store, log *slog.Logger) *Relay {
@@ -49,6 +51,7 @@ func New(cfg *config.Config, st *store.Store, events eventstore.Store, log *slog
 		log:        log,
 		members:    newMemberCache(st.IsMember),
 		inboxLimit: policies.EventIPRateLimiter(10, time.Minute, 60),
+		repeats:    flood.NewGuard(events),
 	}
 	rl := r.Relay
 
@@ -75,6 +78,7 @@ func New(cfg *config.Config, st *store.Store, events eventstore.Store, log *slog
 		r.rejectBanned,
 		policies.PreventTimestampsInTheFuture(MaxFutureDrift),
 		r.requireMembership,
+		r.rejectRepeats,
 		policies.EventPubKeyRateLimiter(30, time.Minute, 300),
 	)
 	rl.OnRequest = policies.SeqRequest(
@@ -157,6 +161,13 @@ func (r *Relay) requireMembership(ctx context.Context, evt nostr.Event) (bool, s
 		return r.inboxLimit(ctx, evt)
 	}
 	return true, "restricted: pay the one-time admission fee at " + r.cfg.PublicURL.String() + " to publish here"
+}
+
+func (r *Relay) rejectRepeats(_ context.Context, evt nostr.Event) (bool, string) {
+	if r.repeats.Repeat(evt) {
+		return true, "duplicate: you already posted this note within the last hour"
+	}
+	return false, ""
 }
 
 func (r *Relay) hasEventsBy(pk nostr.PubKey) bool {
