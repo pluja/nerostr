@@ -1,0 +1,55 @@
+version: "2"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gocritic
+    - gosec
+    - misspell
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - usestdlibvars
+  settings:
+    errcheck:
+      exclude-functions:
+        # Deferred rollbacks are no-ops after a successful commit.
+        - (*database/sql.Tx).Rollback
+    gosec:
+      excludes:
+        # Unhandled errors are errcheck's job, which applies the std-error-handling preset.
+        - G104
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters: [bodyclose, errcheck, gosec, noctx]
+      # File paths here come from the operator: CLI arguments and DATA_DIR.
+      - path: (main\.go|internal/importer/)
+        linters: [gosec]
+        text: "G304|G703"
+      # The healthcheck subcommand probes LISTEN_ADDR on loopback.
+      - path: main\.go
+        linters: [gosec]
+        text: "G704"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/pluja/nerostr

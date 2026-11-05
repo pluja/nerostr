@@ -272,17 +272,26 @@ Two v1 leftovers:
 
 ## Development
 
+You need Go and, for the Dockerfile lint, Docker or Podman.
+
 ```bash
-go test -race ./...
+make check     # everything CI runs: tidy, formatting, lint, tests, vulnerabilities, workflow and Dockerfile lint
+make fmt       # format Go code (gofmt + goimports)
 PUBLIC_URL=http://localhost:8080 DATA_DIR=./data/dev go run .
 ```
+
+The linters are configured in [`.golangci.yml`](.golangci.yml) and [`.hadolint.yaml`](.hadolint.yaml).
+Their versions are pinned in the [`Makefile`](Makefile), which CI also uses, so local and CI results match.
+A `//nolint` comment must name the linter and say why.
 
 The code is small:
 - `internal/relay`: khatru setup, write policy and NIP-86;
 - `internal/payments`: invoices and the payment monitor;
 - `internal/web`: pages and HTTP API;
 - `internal/store`: SQLite;
-- `internal/wallet`: wallet RPC client.
+- `internal/wallet`: wallet RPC client;
+- `internal/flood`: the repeated-note rule;
+- `internal/alerts`: alert DMs and heartbeat.
 
 ## 🧡 Support this project
 

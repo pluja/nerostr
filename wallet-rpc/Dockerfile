@@ -8,6 +8,7 @@ ARG MONERO_VERSION=v0.18.5.4
 ARG SHA256_AMD64=ba2928962c101b609434bf8c1b43ad59ebe96c5525977284ca599d8bf0f02d10
 ARG SHA256_ARM64=d20d71e6522b41eb8e549c3425f7f4622c9c9a448fc7147525393fd0a6b59703
 ARG TARGETARCH
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl bzip2 \
  && rm -rf /var/lib/apt/lists/*
@@ -31,7 +32,7 @@ RUN apt-get update \
  && useradd --uid 1000 --gid 1000 --home-dir /wallet --no-create-home --shell /usr/sbin/nologin monero \
  && mkdir /wallet && chown monero:monero /wallet
 COPY --from=download /monero/monero-wallet-rpc /usr/local/bin/monero-wallet-rpc
-USER monero
+USER 1000:1000
 WORKDIR /wallet
 EXPOSE 18083
 ENTRYPOINT ["monero-wallet-rpc", "--non-interactive", "--rpc-bind-ip=0.0.0.0", "--confirm-external-bind", "--rpc-bind-port=18083"]
