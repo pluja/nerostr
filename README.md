@@ -12,6 +12,7 @@ Everyone can read. Only people who paid a small one-time fee in Monero can publi
 - [Self-hosting](#self-hosting)
 - [Configuration](#configuration)
 - [Administration](#administration)
+- [Monitoring and alerts](#monitoring-and-alerts)
 - [Backups](#backups)
 - [Upgrading](#upgrading)
 - [Migrating from nerostr v1 (strfry)](#migrating-from-nerostr-v1-strfry)
@@ -24,6 +25,8 @@ Everyone can read. Only people who paid a small one-time fee in Monero can publi
   [khatru](https://khatru.nostr.technology/), with [LMDB](https://www.symas.com/lmdb) for events and SQLite for members.
 - **Private payments.** Every invoice gets a fresh Monero subaddress. A view-only wallet is enough, so the server never holds your spend key.
 - **Payments that don't get lost.** Partial payments add up, and payments that arrive after an invoice expired are still credited (for 30 days by default).
+- **Members stay reachable.** Anyone can reply to, react to, zap and DM a member here, while the relay's feed shows members' posts only.
+- **Alerts on nostr.** The relay DMs you when payments stop being processed (wallet unreachable or stuck) and when they recover. An optional heartbeat URL catches full outages.
 - **Standard nostr integration.**
   - [NIP-11](https://nips.nostr.com/11) advertises the admission fee and payment page, so clients can show it.
   - [NIP-86](https://nips.nostr.com/86) lets you manage members, bans and blocked IPs from any NIP-86 client, authenticated with your nostr key.
@@ -44,6 +47,17 @@ Everyone can read. Only people who paid a small one-time fee in Monero can publi
 4. Members can publish. Everyone else gets `restricted: pay the one-time admission fee at https://…` from the relay, which most clients show to the user.
 
 Reading is always free. Former members can still delete their own events.
+
+### Inbox
+
+With `INBOX=true` (the default), non-members can also publish events that tag a member, as long as the kind is in `INBOX_KINDS`.
+The defaults cover replies, legacy and NIP-17 DMs, reposts, reactions, comments and zap receipts.
+That way members can be reached here without a separate inbox relay. Members can list this relay in their NIP-17 DM relay list (kind 10050).
+
+To keep the paid feed clean, events from non-members are only returned to queries that ask for something specific:
+an `ids` or `authors` filter, or a `#p`, `#e`, `#a` or `#q` tag (notifications, threads, DMs).
+They never appear in general feed queries or live feed subscriptions.
+Inbox events are rate-limited per IP and may tag at most 20 people.
 
 ## Self-hosting
 
@@ -85,7 +99,8 @@ You need a small Linux server with Docker, a domain, and a Monero wallet.
    - [nginx](deploy/nginx.conf)
    - [caddy-docker-proxy](deploy/caddy-docker-proxy.override.yml): copy it to `docker-compose.override.yml` and set your domain.
 
-Check `https://your.domain/healthz`. It reports the database status, and whether the payment monitor can reach the wallet.
+Check `https://your.domain/healthz`. It reports the database status, and whether payments are being processed.
+Then set up [alerts](#monitoring-and-alerts), so you hear about problems before your users do.
 
 ### Choosing a Monero node
 
@@ -112,6 +127,10 @@ Configuration is read from environment variables (`.env` with Docker Compose).
 | `PAYMENT_POLL_INTERVAL` | `20` | Seconds between wallet checks. |
 | `TRUSTED_PROXIES` | private ranges | Sources whose `X-Forwarded-For` is trusted. |
 | `API_KEY` | | Enables the v1 `X-API-KEY` endpoints (see below). |
+| `INBOX`, `INBOX_KINDS` | `true`, `1,4,6,7,16,1059,1111,9735` | Accept events from non-members that tag a member ([Inbox](#inbox)). |
+| `ALERT_PUBKEYS`, `ALERT_AFTER`, `ALERT_RELAYS` | admins, `600`, popular relays | Who gets alert DMs, after how many seconds of trouble, and where to find their DM relays. |
+| `HEARTBEAT_URL`, `HEARTBEAT_INTERVAL` | , `300` | URL requested periodically while healthy (dead-man switch). |
+| `RELAY_SECRET_KEY` | generated | The relay's own nostr key (signs alerts, NIP-11 `self`). Kept in `data/nerostr/relay.key` if not set. |
 | `DATA_DIR`, `LISTEN_ADDR`, `LOG_LEVEL` | `/data`, `:8080`, `info` | |
 
 ## Administration
@@ -145,6 +164,19 @@ curl -X DELETE -H "X-API-KEY: $API_KEY" https://xmr.example.com/api/user/<npub o
 `GET /api/status/<pubkey>` returns `{"action":"accept"}` for members and `{"action":"reject"}` otherwise.
 `GET /api/user/<pubkey>` returns membership and invoice status as JSON.
 
+## Monitoring and alerts
+
+nerostr watches its own payment processing. It counts as broken when the wallet RPC can't be reached,
+or when the wallet height hasn't moved for 30 minutes (usually its Monero daemon is down or not syncing).
+
+- **Nostr DMs.** After `ALERT_AFTER` seconds of trouble (10 minutes by default), the relay sends an encrypted NIP-17 DM to each `ALERT_PUBKEYS` (default: `ADMIN_PUBKEYS`).
+  It sends another DM when payments recover. DMs go to the recipient's DM relays (kind 10050) and are stored on this relay too.
+  They come from the relay's own key: the `self` pubkey in NIP-11, also printed at startup.
+- **Heartbeat.** Set `HEARTBEAT_URL` to a push-monitor URL ([healthchecks.io](https://healthchecks.io), Uptime Kuma push monitors, …).
+  nerostr requests it every `HEARTBEAT_INTERVAL` seconds while healthy, so the monitor alerts you when pings stop.
+  That includes the whole server being down, which nothing inside the relay can report.
+- **`/healthz`** returns the same status as JSON, for any HTTP monitor.
+
 ## Backups
 
 Everything lives in `./data`:
@@ -154,6 +186,7 @@ Everything lives in `./data`:
 | `data/wallet/` | Wallet files and password | **Yes.** Keep your seed offline as well. |
 | `data/nerostr/nerostr.db` | Members, invoices, bans (SQLite) | **Yes.** nerostr also writes a daily snapshot to `data/nerostr/backups/` (7 kept). |
 | `data/nerostr/events/` | Events (LMDB) | Optional; stop nerostr first, or copy it with `mdb_copy`. |
+| `data/nerostr/relay.key` | The relay's own nostr key | Yes, unless you set `RELAY_SECRET_KEY`. A lost key means alerts come from a new identity. |
 
 If you ever restore the wallet from its seed, set the subaddress lookahead above the number of invoices you've created.
 Otherwise old subaddresses won't be detected.

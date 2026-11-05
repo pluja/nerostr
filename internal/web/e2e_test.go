@@ -467,3 +467,133 @@ func TestInvalidKeysAndHealth(t *testing.T) {
 		t.Fatalf("nip11: %v", info)
 	}
 }
+
+func (e *env) remoteQuery(t *testing.T, r *nostr.Relay, filter nostr.Filter) []nostr.Event {
+	t.Helper()
+	var out []nostr.Event
+	for evt := range r.QueryEvents(filter) {
+		out = append(out, evt)
+	}
+	return out
+}
+
+func ids(events []nostr.Event) map[nostr.ID]bool {
+	m := map[nostr.ID]bool{}
+	for _, e := range events {
+		m[e.ID] = true
+	}
+	return m
+}
+
+func TestInbox(t *testing.T) {
+	e := setup(t)
+	e.cfg.Inbox = true
+	e.cfg.InboxKinds = []nostr.Kind{1, 7, 1059}
+	ctx := context.Background()
+	member := nostr.Generate()
+	stranger := nostr.Generate()
+	e.store.AddMember(ctx, member.Public(), store.SourceAdmin, "")
+	r := e.connect(t)
+	mp := member.Public().Hex()
+
+	// Live subscriptions: a generic feed and the member's notifications.
+	// Subscribing before anything is stored avoids a race in the client library.
+	subCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	feed, err := e.connect(t).Subscribe(subCtx, nostr.Filter{Kinds: []nostr.Kind{1}}, nostr.SubscriptionOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	notifs, err := e.connect(t).Subscribe(subCtx, nostr.Filter{Tags: nostr.TagMap{"p": {mp}}}, nostr.SubscriptionOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-feed.EndOfStoredEvents
+	<-notifs.EndOfStoredEvents
+
+	post := note(t, member, 1, "members-only global feed", nil)
+	if err := publish(t, r, post); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case got := <-feed.Events:
+		if got.ID != post.ID {
+			t.Fatalf("feed got %q, want the member post", got.Content)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("generic feed did not receive the member's post")
+	}
+
+	reply := note(t, stranger, 1, "nice post", nostr.Tags{{"e", post.ID.Hex()}, {"p", mp}})
+	if err := publish(t, r, reply); err != nil {
+		t.Fatalf("reply to a member must be accepted: %v", err)
+	}
+	wrap := note(t, nostr.Generate(), 1059, "ciphertext", nostr.Tags{{"p", mp}})
+	if err := publish(t, r, wrap); err != nil {
+		t.Fatalf("gift-wrapped DM to a member must be accepted: %v", err)
+	}
+
+	live := map[nostr.ID]bool{}
+	for len(live) < 2 {
+		select {
+		case got := <-notifs.Events:
+			live[got.ID] = true
+		case <-time.After(3 * time.Second):
+			t.Fatalf("member's notifications got %v, want the reply and the DM", live)
+		}
+	}
+	if !live[reply.ID] || !live[wrap.ID] {
+		t.Fatalf("member's notifications got %v, want the reply and the DM", live)
+	}
+	select {
+	case got := <-feed.Events:
+		t.Fatalf("generic feed received a non-member event: %q", got.Content)
+	case <-time.After(500 * time.Millisecond):
+	}
+
+	rejected := map[string]nostr.Event{
+		"no recipient":         note(t, stranger, 1, "spam", nil),
+		"non-member recipient": note(t, stranger, 1, "spam", nostr.Tags{{"p", nostr.Generate().Public().Hex()}}),
+		"kind not allowed":     note(t, stranger, 30023, "article", nostr.Tags{{"d", "x"}, {"p", mp}}),
+	}
+	mass := nostr.Tags{{"p", mp}}
+	for range maxRecipientsForTest {
+		mass = append(mass, nostr.Tag{"p", nostr.Generate().Public().Hex()})
+	}
+	rejected["too many recipients"] = note(t, stranger, 1, "mass mention", mass)
+	for name, evt := range rejected {
+		if err := publish(t, r, evt); err == nil || !strings.Contains(err.Error(), "restricted") {
+			t.Errorf("%s: expected rejection, got %v", name, err)
+		}
+	}
+
+	reader := e.connect(t)
+	global := ids(e.remoteQuery(t, reader, nostr.Filter{Kinds: []nostr.Kind{1}}))
+	if !global[post.ID] || global[reply.ID] {
+		t.Fatalf("global feed must contain only member posts: %v", global)
+	}
+	thread := ids(e.remoteQuery(t, reader, nostr.Filter{Tags: nostr.TagMap{"e": {post.ID.Hex()}}}))
+	if !thread[reply.ID] {
+		t.Fatal("thread view must include replies from non-members")
+	}
+	dms := ids(e.remoteQuery(t, reader, nostr.Filter{Kinds: []nostr.Kind{1059}, Tags: nostr.TagMap{"p": {mp}}}))
+	if !dms[wrap.ID] {
+		t.Fatal("member must be able to fetch their DMs")
+	}
+	if byAuthor := ids(e.remoteQuery(t, reader, nostr.Filter{Authors: []nostr.PubKey{stranger.Public()}})); !byAuthor[reply.ID] {
+		t.Fatal("asking for an author directly must return their events")
+	}
+
+	// Inbox senders can delete what they sent.
+	del := note(t, stranger, nostr.KindDeletion, "", nostr.Tags{{"e", reply.ID.Hex()}})
+	if err := publish(t, r, del); err != nil {
+		t.Fatalf("inbox sender deleting own reply: %v", err)
+	}
+
+	e.cfg.Inbox = false
+	if err := publish(t, r, note(t, stranger, 1, "another", nostr.Tags{{"p", mp}})); err == nil {
+		t.Fatal("with INBOX=false non-members must be rejected")
+	}
+}
+
+const maxRecipientsForTest = 20

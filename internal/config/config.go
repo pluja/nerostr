@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"fiatjaf.com/nostr"
+	"fiatjaf.com/nostr/nip19"
 
 	"github.com/pluja/nerostr/internal/pubkey"
 	"github.com/pluja/nerostr/internal/xmr"
@@ -47,6 +48,19 @@ type Config struct {
 
 	// LegacyAPIKey enables the v1 X-API-KEY endpoints when non-empty.
 	LegacyAPIKey string
+
+	// RelayKey signs the relay's own events (alerts). Nil means load or create one in DataDir.
+	RelayKey *nostr.SecretKey
+
+	// Inbox lets non-members send InboxKinds events that tag a member.
+	Inbox      bool
+	InboxKinds []nostr.Kind
+
+	AlertPubKeys      []nostr.PubKey
+	AlertAfter        time.Duration
+	AlertRelays       []string
+	HeartbeatURL      string
+	HeartbeatInterval time.Duration
 }
 
 func (c *Config) RelayURL() string {
@@ -165,10 +179,78 @@ func load(getenv func(string) string) (*Config, error) {
 		fail("API_KEY", errors.New("must be at least 16 characters"))
 	}
 
+	if v := env("RELAY_SECRET_KEY", ""); v != "" {
+		if sk, err := parseSecretKey(v); err != nil {
+			fail("RELAY_SECRET_KEY", err)
+		} else {
+			c.RelayKey = &sk
+		}
+	}
+
+	switch strings.ToLower(env("INBOX", "true")) {
+	case "true", "1", "yes", "on":
+		c.Inbox = true
+	case "false", "0", "no", "off":
+	default:
+		fail("INBOX", errors.New("must be true or false"))
+	}
+	for _, v := range splitList(env("INBOX_KINDS", "1,4,6,7,16,1059,1111,9735")) {
+		n, err := strconv.ParseUint(v, 10, 16)
+		if err != nil {
+			fail("INBOX_KINDS", fmt.Errorf("%q is not an event kind", v))
+			continue
+		}
+		c.InboxKinds = append(c.InboxKinds, nostr.Kind(n))
+	}
+
+	c.AlertPubKeys = c.AdminPubKeys
+	if v := env("ALERT_PUBKEYS", ""); v != "" {
+		c.AlertPubKeys = nil
+		for _, v := range splitList(v) {
+			pk, err := pubkey.Parse(v)
+			if err != nil {
+				fail("ALERT_PUBKEYS", fmt.Errorf("%q: %w", v, err))
+				continue
+			}
+			c.AlertPubKeys = append(c.AlertPubKeys, pk)
+		}
+	}
+	c.AlertAfter = seconds(env("ALERT_AFTER", "600"), time.Minute, "ALERT_AFTER", fail)
+	for _, v := range splitList(env("ALERT_RELAYS", "wss://purplepag.es,wss://relay.damus.io,wss://nos.lol")) {
+		if u, err := url.Parse(v); err != nil || (u.Scheme != "wss" && u.Scheme != "ws") || u.Host == "" {
+			fail("ALERT_RELAYS", fmt.Errorf("%q is not a ws(s):// URL", v))
+			continue
+		}
+		c.AlertRelays = append(c.AlertRelays, v)
+	}
+	if v := env("HEARTBEAT_URL", ""); v != "" {
+		if u, err := url.Parse(v); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+			fail("HEARTBEAT_URL", errors.New("must be an http(s) URL"))
+		} else {
+			c.HeartbeatURL = v
+		}
+	}
+	c.HeartbeatInterval = seconds(env("HEARTBEAT_INTERVAL", "300"), time.Minute, "HEARTBEAT_INTERVAL", fail)
+
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
 	}
 	return c, nil
+}
+
+func parseSecretKey(s string) (nostr.SecretKey, error) {
+	if strings.HasPrefix(s, "nsec1") {
+		prefix, value, err := nip19.Decode(s)
+		if err != nil || prefix != "nsec" {
+			return nostr.SecretKey{}, errors.New("invalid nsec")
+		}
+		return value.(nostr.SecretKey), nil
+	}
+	sk, err := nostr.SecretKeyFromHex(s)
+	if err != nil {
+		return nostr.SecretKey{}, errors.New("must be an nsec or 64-char hex secret key")
+	}
+	return sk, nil
 }
 
 func parsePublicURL(s string) (*url.URL, error) {

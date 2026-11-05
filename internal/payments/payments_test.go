@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -330,5 +331,28 @@ func TestPartiallyPaidInvoiceIsKeptAfterExpiry(t *testing.T) {
 	}
 	if fresh.ID == inv.ID {
 		t.Fatal("outside the late window a new invoice must be issued")
+	}
+}
+
+func TestStuckWalletIsUnhealthy(t *testing.T) {
+	h := newHarness(t, nil)
+	ctx := context.Background()
+	h.svc.checkAndRecord(ctx)
+	if !h.svc.Healthy() {
+		t.Fatalf("fresh wallet: %s", h.svc.Problem())
+	}
+
+	h.clock = h.clock.Add(WalletStallAfter + time.Minute)
+	h.svc.checkAndRecord(ctx)
+	if h.svc.Healthy() || !strings.Contains(h.svc.Problem(), "stuck at height 1000") {
+		t.Fatalf("frozen height must be reported, got %q", h.svc.Problem())
+	}
+
+	h.w.mu.Lock()
+	h.w.height++
+	h.w.mu.Unlock()
+	h.svc.checkAndRecord(ctx)
+	if !h.svc.Healthy() {
+		t.Fatalf("must recover once the height moves: %s", h.svc.Problem())
 	}
 }

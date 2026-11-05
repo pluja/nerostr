@@ -57,11 +57,17 @@ type Service struct {
 }
 
 type Status struct {
-	LastCheck    time.Time
-	LastError    string
-	WalletHeight uint64
-	Watching     int
+	LastCheck       time.Time
+	LastError       string
+	WalletHeight    uint64
+	HeightChangedAt time.Time
+	Watching        int
 }
+
+// WalletStallAfter is how long the wallet height may stay unchanged before the
+// wallet is considered stuck. Monero targets a block every 2 minutes, and a
+// wallet whose daemon is gone keeps answering RPC calls at a frozen height.
+const WalletStallAfter = 30 * time.Minute
 
 func New(cfg Config, st *store.Store, w Wallet, log *slog.Logger) *Service {
 	return &Service{cfg: cfg, store: st, wallet: w, log: log, now: time.Now, kick: make(chan struct{}, 1)}
@@ -75,10 +81,24 @@ func (s *Service) Status() Status {
 	return s.status
 }
 
-// Healthy reports whether the last payment check succeeded recently.
-func (s *Service) Healthy() bool {
+func (s *Service) Healthy() bool { return s.Problem() == "" }
+
+// Problem describes why payments are not being processed, or "" if they are.
+func (s *Service) Problem() string {
 	st := s.Status()
-	return st.LastError == "" && !st.LastCheck.IsZero() && s.now().Sub(st.LastCheck) < 5*s.cfg.PollInterval
+	now := s.now()
+	switch {
+	case st.LastError != "":
+		return "payment checks are failing: " + st.LastError
+	case st.LastCheck.IsZero():
+		return "no successful payment check yet"
+	case now.Sub(st.LastCheck) >= 5*s.cfg.PollInterval:
+		return fmt.Sprintf("no successful payment check since %s", st.LastCheck.UTC().Format(time.RFC3339))
+	case now.Sub(st.HeightChangedAt) >= WalletStallAfter:
+		return fmt.Sprintf("wallet stuck at height %d since %s; is its Monero daemon reachable and synced?",
+			st.WalletHeight, st.HeightChangedAt.UTC().Format(time.RFC3339))
+	}
+	return ""
 }
 
 // Invoice returns the current open invoice for pk, creating one if needed.
@@ -191,7 +211,11 @@ func (s *Service) checkAndRecord(ctx context.Context) {
 	if s.status.LastError != "" {
 		s.log.Info("payment checks recovered")
 	}
-	s.status = Status{LastCheck: s.now(), WalletHeight: height, Watching: watching}
+	changedAt := s.status.HeightChangedAt
+	if height != s.status.WalletHeight || changedAt.IsZero() {
+		changedAt = s.now()
+	}
+	s.status = Status{LastCheck: s.now(), WalletHeight: height, HeightChangedAt: changedAt, Watching: watching}
 }
 
 // Check credits payments for all watched invoices once.

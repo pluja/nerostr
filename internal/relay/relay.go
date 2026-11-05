@@ -32,14 +32,24 @@ var Version = "dev"
 
 type Relay struct {
 	*khatru.Relay
-	cfg    *config.Config
-	store  *store.Store
-	events eventstore.Store
-	log    *slog.Logger
+	cfg        *config.Config
+	store      *store.Store
+	events     eventstore.Store
+	log        *slog.Logger
+	members    *memberCache
+	inboxLimit func(context.Context, nostr.Event) (bool, string)
 }
 
 func New(cfg *config.Config, st *store.Store, events eventstore.Store, log *slog.Logger) *Relay {
-	r := &Relay{Relay: khatru.NewRelay(), cfg: cfg, store: st, events: events, log: log}
+	r := &Relay{
+		Relay:      khatru.NewRelay(),
+		cfg:        cfg,
+		store:      st,
+		events:     events,
+		log:        log,
+		members:    newMemberCache(st.IsMember),
+		inboxLimit: policies.EventIPRateLimiter(10, time.Minute, 60),
+	}
 	rl := r.Relay
 
 	rl.ServiceURL = cfg.PublicURL.String()
@@ -49,6 +59,8 @@ func New(cfg *config.Config, st *store.Store, events eventstore.Store, log *slog
 	rl.Info = r.info()
 
 	rl.UseEventstore(events, MaxQueryLimit)
+	rl.QueryStored = r.membersOnly(rl.QueryStored)
+	rl.PreventBroadcast = r.preventFeedBroadcast
 
 	connLimit := policies.ConnectionRateLimiter(10, time.Minute, 120)
 	rl.RejectConnection = func(req *http.Request) bool {
@@ -85,6 +97,7 @@ func (r *Relay) info() *nip11.RelayInformationDocument {
 		Version:       Version,
 		SupportedNIPs: []any{1, 11, 40, 42, 70, 86},
 		PaymentsURL:   cfg.PublicURL.String(),
+		Self:          selfPubKey(cfg),
 		PostingPolicy: cfg.PublicURL.String(),
 		Limitation: &nip11.RelayLimitationDocument{
 			MaxMessageLength:    MaxMessageSize,
@@ -103,6 +116,14 @@ func (r *Relay) info() *nip11.RelayInformationDocument {
 		Unit   string
 	}{Amount: int(cfg.AdmissionAmount), Unit: "piconero"})
 	return info
+}
+
+func selfPubKey(cfg *config.Config) *nostr.PubKey {
+	if cfg.RelayKey == nil {
+		return nil
+	}
+	pk := cfg.RelayKey.Public()
+	return &pk
 }
 
 func (r *Relay) rejectBanned(ctx context.Context, evt nostr.Event) (bool, string) {
@@ -128,9 +149,12 @@ func (r *Relay) requireMembership(ctx context.Context, evt nostr.Event) (bool, s
 	if member {
 		return false, ""
 	}
-	// Former members may still delete what they published here.
+	// Former members and inbox senders may still delete what they published here.
 	if evt.Kind == nostr.KindDeletion && r.hasEventsBy(evt.PubKey) {
 		return false, ""
+	}
+	if r.cfg.Inbox && r.isInbox(ctx, evt) {
+		return r.inboxLimit(ctx, evt)
 	}
 	return true, "restricted: pay the one-time admission fee at " + r.cfg.PublicURL.String() + " to publish here"
 }

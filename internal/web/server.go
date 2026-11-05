@@ -129,6 +129,7 @@ type indexPage struct {
 	basePage
 	Members int
 	Error   string
+	Inbox   bool
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -141,6 +142,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		basePage: s.base(s.cfg.RelayName),
 		Members:  members,
 		Error:    errorMessages[r.URL.Query().Get("error")],
+		Inbox:    s.cfg.Inbox,
 	})
 }
 
@@ -393,6 +395,8 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 	if ps.LastError != "" {
 		pay["error"] = "wallet rpc unavailable, see logs"
+	} else if problem := s.payments.Problem(); problem != "" {
+		pay["error"] = problem
 	}
 	body := map[string]any{"version": s.version, "database": "ok", "payments": pay}
 	code := http.StatusOK

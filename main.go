@@ -16,8 +16,12 @@ import (
 	"syscall"
 	"time"
 
+	"fiatjaf.com/nostr"
+	"fiatjaf.com/nostr/eventstore"
 	"fiatjaf.com/nostr/eventstore/lmdb"
+	"fiatjaf.com/nostr/nip19"
 
+	"github.com/pluja/nerostr/internal/alerts"
 	"github.com/pluja/nerostr/internal/config"
 	"github.com/pluja/nerostr/internal/importer"
 	"github.com/pluja/nerostr/internal/payments"
@@ -110,6 +114,14 @@ func serve() error {
 	defer st.Close()
 	defer events.Close()
 
+	if cfg.RelayKey == nil {
+		key, err := loadOrCreateKey(filepath.Join(cfg.DataDir, "relay.key"))
+		if err != nil {
+			return fmt.Errorf("relay key: %w", err)
+		}
+		cfg.RelayKey = &key
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -149,11 +161,33 @@ func serve() error {
 	go pay.Run(ctx)
 	go backupLoop(ctx, st, filepath.Join(cfg.DataDir, "backups"), log)
 
+	monitor := &alerts.Monitor{
+		Name:         cfg.PublicURL.Host,
+		Problem:      pay.Problem,
+		After:        cfg.AlertAfter,
+		HeartbeatURL: cfg.HeartbeatURL,
+		Heartbeat:    cfg.HeartbeatInterval,
+		Log:          log.With("component", "alerts"),
+	}
+	if len(cfg.AlertPubKeys) > 0 {
+		deliverLocal := func(_ context.Context, evt nostr.Event) error {
+			if err := events.SaveEvent(evt); err != nil && !errors.Is(err, eventstore.ErrDupEvent) {
+				return err
+			}
+			rl.BroadcastEvent(evt)
+			return nil
+		}
+		monitor.Notify = alerts.NewNotifier(*cfg.RelayKey, cfg.AlertPubKeys, cfg.AlertRelays, cfg.RelayURL(),
+			deliverLocal, log.With("component", "alerts")).Notify
+	}
+	go monitor.Run(ctx)
+
 	errc := make(chan error, 1)
 	go func() {
 		log.Info("nerostr listening", "version", version, "addr", cfg.ListenAddr, "relay", cfg.RelayURL(),
 			"admission", cfg.AdmissionAmount.String()+" XMR", "min_confirmations", cfg.MinConfirmations,
-			"admins", len(cfg.AdminPubKeys))
+			"admins", len(cfg.AdminPubKeys), "inbox", cfg.Inbox, "alert_recipients", len(cfg.AlertPubKeys),
+			"heartbeat", cfg.HeartbeatURL != "", "relay_pubkey", nip19.EncodeNpub(cfg.RelayKey.Public()))
 		errc <- srv.ListenAndServe()
 	}()
 
@@ -252,6 +286,25 @@ func migrateV1(args []string) error {
 	log.Info("v1 migration finished", "members_imported", stats.Imported,
 		"unpaid_skipped", stats.Pending, "invalid", stats.Invalid)
 	return err
+}
+
+// loadOrCreateKey keeps the relay's own nostr identity stable across restarts.
+func loadOrCreateKey(path string) (nostr.SecretKey, error) {
+	if b, err := os.ReadFile(path); err == nil {
+		return nostr.SecretKeyFromHex(strings.TrimSpace(string(b)))
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nostr.SecretKey{}, err
+	}
+	key := nostr.Generate()
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return nostr.SecretKey{}, err
+	}
+	if _, err := f.WriteString(key.Hex() + "\n"); err != nil {
+		f.Close()
+		return nostr.SecretKey{}, err
+	}
+	return key, f.Close()
 }
 
 func healthcheck() error {
