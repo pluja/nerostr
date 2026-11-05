@@ -4,18 +4,25 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
+    inputs:
+      images:
+        description: Also build and smoke-test the container images
+        type: boolean
+        default: true
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Every step runs a Makefile target, so `make check` locally runs the same checks.
+# Every check runs a Makefile target, so `make check` locally runs the same checks.
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -34,27 +41,52 @@ jobs:
       - name: Vulnerabilities
         run: make vuln
       - name: Workflows
-        run: make actionlint
+        run: make actionlint zizmor
       - name: Dockerfiles
         run: make hadolint
 
   images:
+    if: inputs.images != false
     runs-on: ubuntu-latest
     needs: check
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build nerostr
+      - name: Build nerostr (amd64)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
-          push: false
-      - name: Build wallet-rpc
+          platforms: linux/amd64
+          load: true
+          tags: nerostr:ci
+          cache-from: type=gha,scope=nerostr
+          cache-to: type=gha,scope=nerostr,mode=max
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          docker run -d --name nerostr -p 127.0.0.1:8080:8080 \
+            -e PUBLIC_URL=http://127.0.0.1:8080 \
+            -e MONERO_WALLET_RPC_URL=http://127.0.0.1:1/json_rpc \
+            nerostr:ci
+          for _ in $(seq 30); do curl -fsS http://127.0.0.1:8080/healthz && break; sleep 1; done
+          curl -fsS -H 'Accept: application/nostr+json' http://127.0.0.1:8080/ | grep -q '"restricted_writes":true'
+          curl -fsS http://127.0.0.1:8080/ | grep -q 'Pay to relay'
+          docker exec nerostr /nerostr healthcheck
+          docker logs nerostr
+      - name: Build nerostr (arm64)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/arm64
+          cache-from: type=gha,scope=nerostr
+      - name: Build wallet-rpc (amd64)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ./wallet-rpc
           platforms: linux/amd64
-          push: false
+          cache-from: type=gha,scope=wallet-rpc
+          cache-to: type=gha,scope=wallet-rpc,mode=max

@@ -272,10 +272,10 @@ Two v1 leftovers:
 
 ## Development
 
-You need Go and, for the Dockerfile lint, Docker or Podman.
+You need Go and, for the Dockerfile and workflow audits, Docker or Podman.
 
 ```bash
-make check     # everything CI runs: tidy, formatting, lint, tests, vulnerabilities, workflow and Dockerfile lint
+make check     # everything CI runs: tidy, formatting, lint, tests, vulnerabilities, workflow and Dockerfile checks
 make fmt       # format Go code (gofmt + goimports)
 PUBLIC_URL=http://localhost:8080 DATA_DIR=./data/dev go run .
 ```
@@ -292,6 +292,40 @@ The code is small:
 - `internal/wallet`: wallet RPC client;
 - `internal/flood`: the repeated-note rule;
 - `internal/alerts`: alert DMs and heartbeat.
+
+### CI and releases
+
+| Workflow | Runs on | Does |
+|---|---|---|
+| [`ci`](.github/workflows/ci.yml) | pushes to `main`, pull requests | `make check`, then builds the images (amd64 and arm64) and smoke-tests the container. |
+| [`release`](.github/workflows/release.yml) | `v*` tags | Runs `ci`, then publishes the multi-arch image, static Linux binaries with `SHA256SUMS`, and a GitHub release with generated notes. |
+| [`wallet-rpc`](.github/workflows/wallet-rpc.yml) | changes to `wallet-rpc/`, weekly, manually | Publishes the wallet image, tagged with its Monero version and `latest`. The weekly run picks up Debian security fixes. |
+
+Images go to `ghcr.io/<owner>/`, and to Docker Hub as well when `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are set.
+Every image has an SBOM and a signed build-provenance attestation; binaries are attested too.
+Release builds never use the build cache.
+
+One-time setup in the GitHub repository settings:
+
+1. **Environments → New environment `release`.** Under deployment branches and tags, allow only `main` and tags matching `v*`.
+   If you publish to Docker Hub, add `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` as secrets of this environment, not as repository secrets.
+   Then only release jobs can read them.
+2. **After the first publish**, open each package (`nerostr`, `nerostr-wallet-rpc`) under your profile's *Packages*.
+   Set its visibility to public: new packages on user accounts start out private.
+
+To release:
+
+```bash
+git tag -s v2.0.0 -m v2.0.0 && git push origin v2.0.0
+```
+
+A tag with a suffix, such as `v2.0.0-rc.1`, becomes a pre-release. It doesn't move `latest` or the `2` and `2.0` image tags, so it is safe for trying out a release.
+To verify a published image or binary:
+
+```bash
+gh attestation verify oci://ghcr.io/pluja/nerostr:2.0.0 --owner pluja
+gh attestation verify nerostr_v2.0.0_linux_amd64.tar.gz --owner pluja
+```
 
 ## 🧡 Support this project
 

@@ -22,6 +22,10 @@ RUN xx-go build -trimpath \
  && xx-verify --static /out/nerostr \
  && mkdir -p /out/data
 
+# Release binaries: docker buildx build --target binary --output type=local,dest=dist .
+FROM scratch AS binary
+COPY --from=build /out/nerostr /nerostr
+
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /out/nerostr /nerostr

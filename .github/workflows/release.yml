@@ -1,22 +1,39 @@
 name: release
 
+# Push a tag like v2.0.0 to publish. Tags with a suffix (v2.0.0-rc.1) become
+# pre-releases and do not move the `latest` or major-version image tags.
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
-    inputs:
-      wallet_rpc:
-        description: Also build and push the wallet-rpc image
-        type: boolean
-        default: false
 
-permissions:
-  contents: read
+permissions: {}
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+# Release builds never use the build cache, so nothing from PR builds can end up in them.
 jobs:
-  nerostr:
-    if: github.event_name == 'push'
+  checks:
+    # Job-level calls resolve from the triggering commit, not from a checkout, so the
+    # self-repository form ($/...) adds nothing here; switch once actionlint accepts it.
+    uses: ./.github/workflows/ci.yml # zizmor: ignore[self-repository]
+    with:
+      images: false
+    permissions:
+      contents: read
+
+  image:
+    needs: checks
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      packages: write # push images to GHCR
+      id-token: write # sign attestations with the workflow's OIDC identity
+      attestations: write # store the attestations
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -24,17 +41,26 @@ jobs:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - if: env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/nerostr
+          images: |
+            name=ghcr.io/${{ github.repository_owner }}/nerostr
+            name=docker.io/${{ env.DOCKERHUB_USERNAME }}/nerostr,enable=${{ env.DOCKERHUB_USERNAME != '' }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -44,30 +70,93 @@ jobs:
           build-args: VERSION=${{ github.ref_name }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/nerostr
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+          # Storage records only exist for organization-owned repositories.
+          create-storage-record: false
 
-  wallet-rpc:
-    if: github.event_name == 'push' || inputs.wallet_rpc
+  binaries:
+    needs: checks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # sign attestations with the workflow's OIDC identity
+      attestations: write # store the attestations
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - id: version
-        run: |
-          v=$(sed -n 's/^ARG MONERO_VERSION=//p' wallet-rpc/Dockerfile)
-          echo "monero=$v" >> "$GITHUB_OUTPUT"
-          echo "image=${{ secrets.DOCKERHUB_USERNAME }}/nerostr-wallet-rpc" >> "$GITHUB_OUTPUT"
-      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+      - name: Build static binaries
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: ./wallet-rpc
+          context: .
+          target: binary
           platforms: linux/amd64,linux/arm64
-          push: true
-          provenance: mode=max
-          sbom: true
-          tags: ${{ steps.version.outputs.image }}:${{ steps.version.outputs.monero }}
+          build-args: VERSION=${{ github.ref_name }}
+          outputs: type=local,dest=dist
+      - name: Package
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir release
+          for arch in amd64 arm64; do
+            tar -C "dist/linux_${arch}" -czf "release/nerostr_${TAG}_linux_${arch}.tar.gz" nerostr
+          done
+          (cd release && sha256sum -- *.tar.gz > SHA256SUMS)
+          cat release/SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release/*.tar.gz
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binaries
+          path: release/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: [image, binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub release
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: binaries
+          path: release
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          prerelease=()
+          if [[ "$TAG" == *-* ]]; then prerelease=(--prerelease); fi
+          cat > notes.md <<EOF
+          ## Container image
+
+          \`\`\`
+          ghcr.io/${OWNER}/nerostr:${TAG#v}
+          \`\`\`
+
+          Multi-arch (amd64, arm64), with SBOM and build provenance. Verify with:
+
+          \`\`\`
+          gh attestation verify oci://ghcr.io/${OWNER}/nerostr:${TAG#v} --owner ${OWNER}
+          \`\`\`
+
+          ## Binaries
+
+          Static Linux binaries are attached. Check them with \`sha256sum -c SHA256SUMS\` and
+          \`gh attestation verify nerostr_${TAG}_linux_amd64.tar.gz --owner ${OWNER}\`.
+          EOF
+          gh release create "$TAG" release/* --verify-tag --title "$TAG" --generate-notes \
+            --notes "$(cat notes.md)" "${prerelease[@]}"
