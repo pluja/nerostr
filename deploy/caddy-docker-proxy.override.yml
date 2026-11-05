@@ -1,0 +1,12 @@
+# For hosts running lucaslorentz/caddy-docker-proxy on an external "caddy" network.
+# Copy next to docker-compose.yml as docker-compose.override.yml and set your domain.
+services:
+  nerostr:
+    networks: [caddy]
+    labels:
+      caddy: xmr.example.com
+      caddy.reverse_proxy: "{{upstreams 8080}}"
+
+networks:
+  caddy:
+    external: true

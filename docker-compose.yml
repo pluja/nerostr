@@ -1,52 +1,56 @@
-version: "3.9"
+name: nerostr
 
 services:
-  strfry-nerostr-relay:
-    container_name: nerostr-strfry-relay
-    image: pluja/nerostr-strfry:latest
-    environment:
-      - API_URL=http://nerostr:8080
-    volumes:
-      - ./strfry.conf:/etc/strfry.conf
-      - ./nerostr_data/strfry/strfry-db:/app/strfry-db
+  nerostr:
+    image: pluja/nerostr:${NEROSTR_VERSION:-2}
+    build: .
+    container_name: nerostr
     restart: unless-stopped
+    env_file: .env
+    environment:
+      MONERO_WALLET_RPC_URL: http://monero-wallet-rpc:18083/json_rpc
+      MONERO_WALLET_RPC_USER: nerostr
+    volumes:
+      - ./data/nerostr:/data
+    ports:
+      # Localhost only: put a TLS reverse proxy (Caddy, nginx) in front.
+      - "127.0.0.1:8080:8080"
+    networks: [web, wallet]
+    depends_on: [monero-wallet-rpc]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "/nerostr", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
 
   monero-wallet-rpc:
+    image: pluja/nerostr-wallet-rpc:${MONERO_VERSION:-v0.18.5.4}
+    build: ./wallet-rpc
     container_name: nerostr-monero-wallet-rpc
-    env_file: 
-      - .env
-    image: sethsimmons/simple-monero-wallet-rpc:latest
-    command: [
-      "--wallet-file",
-      "${MONERO_WALLET_FILENAME}",
-      "--password",
-      "${MONERO_WALLET_PASSWORD}",
-      "--rpc-bind-port",
-      "18083",
-      "--daemon-host",
-      "${MONERO_DAEMON_RPC_HOSTNAME}",
-      "--daemon-port",
-      "${MONERO_DAEMON_RPC_PORT}",
-      "--disable-rpc-login",
-      "--max-log-files",
-      "1",
-      "--max-log-file-size",
-      "1000000"
-    ]
-    volumes:
-      - ./nerostr_data/wallet/:/home/monero/wallet/
     restart: unless-stopped
+    command:
+      - --wallet-file=/wallet/${MONERO_WALLET_FILENAME:?missing in .env}
+      - --password-file=/wallet/password
+      - --rpc-login=nerostr:${MONERO_WALLET_RPC_PASSWORD:?missing in .env}
+      - --daemon-address=${MONERO_DAEMON_ADDRESS:?missing in .env}
+      - --untrusted-daemon
+      - --log-file=/wallet/monero-wallet-rpc.log
+      - --max-log-file-size=10000000
+      - --max-log-files=2
+    volumes:
+      - ./data/wallet:/wallet
+    networks: [wallet, egress]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
 
-  nerostr:
-    container_name: nerostr-paywall
-    image: pluja/nerostr:latest
-    env_file:
-      - .env
-    volumes:
-      - ./nerostr_data/nerostr/nerostr-db:/app/nerostr_data/db
-    ports:
-      - "8089:8080"
-    depends_on:
-      - strfry-nerostr-relay
-      - monero-wallet-rpc
-    restart: unless-stopped
+networks:
+  web:
+  # Only nerostr reaches the wallet; the wallet uses egress for its daemon.
+  wallet:
+    internal: true
+  egress:

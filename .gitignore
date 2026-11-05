@@ -1,9 +1,5 @@
-node_modules
-nerostr/nerostr_data/db
-nerostr_data
-wallet
-strfry-db
-.env
-*.override.yml
-style.css
-*.fiber.gz
+/.env
+/data/
+/docker-compose.override.yml
+/nerostr
+/.pi/
