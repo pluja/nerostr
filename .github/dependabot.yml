@@ -1,17 +1,17 @@
 version: 2
+# The cooldown leaves new releases a week to be caught if they are compromised.
 updates:
   - package-ecosystem: gomod
     directory: /
-    schedule:
-      interval: weekly
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
     groups:
-      go:
-        patterns: ["*"]
+      go: { patterns: ["*"] }
   - package-ecosystem: docker
     directories: [/, /wallet-rpc]
-    schedule:
-      interval: weekly
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
   - package-ecosystem: github-actions
     directory: /
-    schedule:
-      interval: weekly
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
