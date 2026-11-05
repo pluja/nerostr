@@ -233,7 +233,7 @@ func TestPayToRelayFlow(t *testing.T) {
 	}
 
 	resp, page := e.get(t, "/user/"+npub)
-	if resp.StatusCode != 200 || !strings.Contains(page, "8FakeSubaddress0001") || !strings.Contains(page, "0.002") {
+	if resp.StatusCode != http.StatusOK || !strings.Contains(page, "8FakeSubaddress0001") || !strings.Contains(page, "0.002") {
 		t.Fatalf("invoice page: %d\n%s", resp.StatusCode, page)
 	}
 	if !strings.Contains(page, `href="monero:8FakeSubaddress0001?tx_amount=0.002&amp;`) {
@@ -242,7 +242,7 @@ func TestPayToRelayFlow(t *testing.T) {
 	if !strings.Contains(resp.Header.Get("Content-Security-Policy"), "default-src 'none'") {
 		t.Fatal("missing CSP")
 	}
-	if resp, _ := e.get(t, "/user/"+npub+"/qr.png"); resp.StatusCode != 200 || resp.Header.Get("Content-Type") != "image/png" {
+	if resp, _ := e.get(t, "/user/"+npub+"/qr.png"); resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "image/png" {
 		t.Fatalf("qr: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
 	}
 
@@ -450,7 +450,7 @@ func TestInvalidKeysAndHealth(t *testing.T) {
 	if _, page := e.get(t, "/?error=<script>"); strings.Contains(page, "<script>") {
 		t.Fatal("arbitrary error text must not be reflected")
 	}
-	if resp, body := e.get(t, "/healthz"); resp.StatusCode != 200 || !strings.Contains(body, `"database":"ok"`) {
+	if resp, body := e.get(t, "/healthz"); resp.StatusCode != http.StatusOK || !strings.Contains(body, `"database":"ok"`) {
 		t.Fatalf("healthz: %d %s", resp.StatusCode, body)
 	}
 

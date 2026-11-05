@@ -243,7 +243,7 @@ func (s *Server) invoiceView(npub string, inv *store.Invoice) *invoiceView {
 		Address: inv.Address,
 		// html/template rejects the monero: scheme; the URI is built only from a
 		// wallet-issued address and URL-encoded parameters.
-		URI:           template.URL(moneroURI(inv)),
+		URI:           template.URL(moneroURI(inv)), //nolint:gosec // built from a wallet address and URL-encoded values
 		Amount:        inv.Amount.String(),
 		Seen:          inv.Seen.String(),
 		Confirmed:     inv.Confirmed.String(),
@@ -288,7 +288,7 @@ func (s *Server) handleQR(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "private, max-age=3600")
-	w.Write(png)
+	_, _ = w.Write(png) //nolint:gosec // generated PNG bytes served as image/png
 }
 
 func (s *Server) handleCheck(w http.ResponseWriter, r *http.Request) {
@@ -486,11 +486,11 @@ func (s *Server) serverError(w http.ResponseWriter, err error) {
 }
 
 func redirect(w http.ResponseWriter, r *http.Request, to string) {
-	http.Redirect(w, r, to, http.StatusSeeOther)
+	http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // callers only pass paths on this site
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
 }

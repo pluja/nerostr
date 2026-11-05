@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"time"
@@ -355,7 +356,7 @@ func scanInvoice(row interface{ Scan(...any) error }) (Invoice, error) {
 		return inv, err
 	}
 	inv.PubKey = pk
-	inv.Amount, inv.Seen, inv.Confirmed = xmr.Piconero(amount), xmr.Piconero(seen), xmr.Piconero(confirmed)
+	inv.Amount, inv.Seen, inv.Confirmed = fromDB(amount), fromDB(seen), fromDB(confirmed)
 	inv.CreatedAt, inv.ExpiresAt = time.Unix(created, 0), time.Unix(expires, 0)
 	if paid.Valid {
 		t := time.Unix(paid.Int64, 0)
@@ -368,7 +369,7 @@ func (s *Store) CreateInvoice(ctx context.Context, inv *Invoice) error {
 	res, err := s.db.ExecContext(ctx,
 		`INSERT INTO invoices (pubkey, address, subaddr_index, amount, wallet_height, created_at, expires_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		inv.PubKey.Hex(), inv.Address, inv.SubaddrIndex, int64(inv.Amount), inv.WalletHeight,
+		inv.PubKey.Hex(), inv.Address, inv.SubaddrIndex, toDB(inv.Amount), inv.WalletHeight,
 		inv.CreatedAt.Unix(), inv.ExpiresAt.Unix())
 	if err != nil {
 		return err
@@ -418,7 +419,7 @@ func (s *Store) WatchedInvoices(ctx context.Context, since time.Time) ([]Invoice
 func (s *Store) UpdateInvoiceTotals(ctx context.Context, id int64, seen, confirmed xmr.Piconero) error {
 	_, err := s.db.ExecContext(ctx,
 		`UPDATE invoices SET seen = ?, confirmed = ? WHERE id = ? AND paid_at IS NULL`,
-		int64(seen), int64(confirmed), id)
+		toDB(seen), toDB(confirmed), id)
 	return err
 }
 
@@ -433,7 +434,7 @@ func (s *Store) MarkPaid(ctx context.Context, id int64, seen, confirmed xmr.Pico
 	var hex string
 	err = tx.QueryRowContext(ctx,
 		`UPDATE invoices SET seen = ?, confirmed = ?, paid_at = ? WHERE id = ? AND paid_at IS NULL RETURNING pubkey`,
-		int64(seen), int64(confirmed), at.Unix(), id).Scan(&hex)
+		toDB(seen), toDB(confirmed), at.Unix(), id).Scan(&hex)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
@@ -449,4 +450,20 @@ func (s *Store) MarkPaid(ctx context.Context, id int64, seen, confirmed xmr.Pico
 		return err
 	}
 	return tx.Commit()
+}
+
+// toDB and fromDB convert amounts for SQLite's signed integers. Saturating is
+// safe: reaching the limit would take half of all XMR in existence.
+func toDB(p xmr.Piconero) int64 {
+	if p > math.MaxInt64 {
+		return math.MaxInt64
+	}
+	return int64(p)
+}
+
+func fromDB(v int64) xmr.Piconero {
+	if v < 0 {
+		return 0
+	}
+	return xmr.Piconero(v)
 }

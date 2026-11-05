@@ -18,6 +18,10 @@ import (
 	"github.com/pluja/nerostr/internal/xmr"
 )
 
+// MaxAdmission keeps every amount the relay stores far below the int64 limit of
+// its database columns (about 9.2 million XMR).
+const MaxAdmission = 1000 * xmr.OneXMR
+
 type Config struct {
 	ListenAddr string
 	DataDir    string
@@ -132,11 +136,14 @@ func load(getenv func(string) string) (*Config, error) {
 		c.AdminPubKeys = append(c.AdminPubKeys, pk)
 	}
 
-	if amount, err := xmr.ParseXMR(env("ADMISSION_AMOUNT", "0.002")); err != nil {
+	switch amount, err := xmr.ParseXMR(env("ADMISSION_AMOUNT", "0.002")); {
+	case err != nil:
 		fail("ADMISSION_AMOUNT", err)
-	} else if amount == 0 {
+	case amount == 0:
 		fail("ADMISSION_AMOUNT", errors.New("must be greater than zero"))
-	} else {
+	case amount > MaxAdmission:
+		fail("ADMISSION_AMOUNT", fmt.Errorf("must be at most %s XMR", MaxAdmission))
+	default:
 		c.AdmissionAmount = amount
 	}
 

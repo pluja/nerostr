@@ -62,11 +62,12 @@ func ImportEvents(r io.Reader, events eventstore.Store, log *slog.Logger) (Event
 			continue
 		}
 		var err error
-		if evt.Kind.IsRegular() {
+		switch {
+		case evt.Kind.IsRegular():
 			err = events.SaveEvent(evt)
-		} else if exists(events, evt.ID) {
+		case exists(events, evt.ID):
 			err = eventstore.ErrDupEvent
-		} else {
+		default:
 			_, err = events.ReplaceEvent(evt)
 		}
 		switch {

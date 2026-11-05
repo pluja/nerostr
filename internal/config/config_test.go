@@ -139,3 +139,15 @@ func TestAlertAndInboxOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestAdmissionCap(t *testing.T) {
+	base := map[string]string{"PUBLIC_URL": "https://relay.example.com"}
+	base["ADMISSION_AMOUNT"] = "1000"
+	if _, err := load(envOf(base)); err != nil {
+		t.Fatalf("1000 XMR is allowed: %v", err)
+	}
+	base["ADMISSION_AMOUNT"] = "1000.000000000001"
+	if _, err := load(envOf(base)); err == nil || !strings.Contains(err.Error(), "at most 1000 XMR") {
+		t.Fatalf("expected cap error, got %v", err)
+	}
+}

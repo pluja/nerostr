@@ -118,7 +118,7 @@ func (r *Relay) info() *nip11.RelayInformationDocument {
 	info.Fees.Admission = append(info.Fees.Admission, struct {
 		Amount int
 		Unit   string
-	}{Amount: int(cfg.AdmissionAmount), Unit: "piconero"})
+	}{Amount: int(cfg.AdmissionAmount), Unit: "piconero"}) //nolint:gosec // bounded by config.MaxAdmission
 	return info
 }
 
@@ -198,7 +198,7 @@ func (r *Relay) deleteEventsBy(pk nostr.PubKey) {
 var errUnauthorized = errors.New("unauthorized: only relay admins can call the management API")
 
 func (r *Relay) setupManagementAPI() {
-	api := &r.Relay.ManagementAPI
+	api := &r.ManagementAPI
 	st := r.store
 
 	api.OnAPICall = func(ctx context.Context, mp nip86.MethodParams) (bool, string) {

@@ -42,8 +42,10 @@ func TestRealIP(t *testing.T) {
 
 func TestLimiter(t *testing.T) {
 	l := newLimiter(1<<62, 2)
-	if !l.allow("a") || !l.allow("a") {
-		t.Fatal("burst should be allowed")
+	for i := range 2 {
+		if !l.allow("a") {
+			t.Fatalf("request %d of the burst should be allowed", i+1)
+		}
 	}
 	if l.allow("a") {
 		t.Fatal("third request should be limited")
