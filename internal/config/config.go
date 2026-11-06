@@ -65,6 +65,19 @@ type Config struct {
 	AlertRelays       []string
 	HeartbeatURL      string
 	HeartbeatInterval time.Duration
+
+	// WelcomeMessage is DMed to keys that just became members; empty disables it.
+	WelcomeMessage string
+}
+
+// DefaultWelcomeMessage supports the placeholders {name}, {relay} and {url}.
+const DefaultWelcomeMessage = "Welcome to {name}. Your payment went through, so you can now post to {relay}. " +
+	"Add it to your relay list to get started."
+
+// WelcomeText is the welcome message with its placeholders filled in.
+func (c *Config) WelcomeText() string {
+	return strings.NewReplacer("{name}", c.RelayName, "{relay}", c.RelayURL(), "{url}", c.PublicURL.String()).
+		Replace(c.WelcomeMessage)
 }
 
 func (c *Config) RelayURL() string {
@@ -238,6 +251,10 @@ func load(getenv func(string) string) (*Config, error) {
 		}
 	}
 	c.HeartbeatInterval = seconds(env("HEARTBEAT_INTERVAL", "300"), time.Minute, "HEARTBEAT_INTERVAL", fail)
+
+	if c.WelcomeMessage = env("WELCOME_MESSAGE", DefaultWelcomeMessage); strings.EqualFold(c.WelcomeMessage, "off") {
+		c.WelcomeMessage = ""
+	}
 
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)

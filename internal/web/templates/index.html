@@ -1,42 +1,56 @@
 {{define "content"}}
-<section class="card join">
-  <h2>Get write access</h2>
-  <p class="muted">One-time payment of <strong>{{.Amount}} XMR</strong>. Your key can publish here forever.</p>
+<section class="card join" aria-labelledby="join-title">
+  <h1 id="join-title">Post on {{.Name}}</h1>
+  <p class="lead">Pay {{.Amount}} XMR once and post here for good.</p>
   {{with .Error}}<p class="alert" role="alert">{{.}}</p>{{end}}
   <form action="/user" method="post" id="join-form">
-    <label for="pkey">Your nostr public key</label>
-    <input id="pkey" name="pkey" type="text" required autocomplete="off" autocapitalize="off" spellcheck="false"
-           placeholder="npub1…">
-    <div class="actions">
-      <button type="submit" class="primary">Pay to relay</button>
-      <button type="button" class="secondary" id="use-extension" hidden>Use my nostr extension</button>
+    <label for="pkey">Your public key</label>
+    <div class="join-row">
+      <input id="pkey" name="pkey" type="text" required autocomplete="off" autocapitalize="off" spellcheck="false"
+             placeholder="npub1…" aria-describedby="pkey-hint">
+      <button type="submit" class="primary">Continue</button>
     </div>
+    <p class="hint" id="pkey-hint">npub or hex. Never your nsec. Already paid? Enter it to check.</p>
+    <button type="button" class="ghost extension" id="use-extension" hidden>Use my nostr extension</button>
   </form>
-  <p class="hint">Already paid? Enter your key to see your status.</p>
 </section>
 
-<p class="stat">{{.Members}} {{if eq .Members 1}}member{{else}}members{{end}} can publish here</p>
+{{template "relay-address" .}}
 
-<section class="grid">
-  <article class="card">
-    <h3>How it works</h3>
-    <ol>
-      <li>Enter your public key (npub).</li>
-      <li>Send the amount to the Monero address you get.</li>
-      <li>Once it confirms, publish to <code>{{.RelayURL}}</code> from any nostr client.</li>
-    </ol>
-  </article>
-  <article class="card">
-    <h3>Why pay to relay?</h3>
-    <p>Publishing costs a little, so spammers and bots stay out and the feed stays clean.{{if .Inbox}} Anyone can still reply to, react to, zap and message members here.{{end}} Reading is always free.</p>
-  </article>
-  <article class="card">
-    <h3>Why Monero?</h3>
-    <p>Payments are private. Each invoice gets its own subaddress, so payments can't be linked on the blockchain.</p>
-  </article>
-  <article class="card">
-    <h3>What is nostr?</h3>
-    <p>An open protocol for censorship-resistant social media. <a href="https://usenostr.org">Learn more</a>.</p>
-  </article>
+<p class="stat"><strong>{{.Members}}</strong> {{if eq .Members 1}}member{{else}}members{{end}}</p>
+
+<section class="how" aria-labelledby="how-title">
+  <h2 id="how-title">How it works</h2>
+  <ol class="steps">
+    <li>Enter your npub.</li>
+    <li>Pay {{.Amount}} XMR from any Monero wallet.</li>
+    <li>Add the relay to your client and post.</li>
+  </ol>
+</section>
+
+<section class="faq" aria-labelledby="faq-title">
+  <h2 id="faq-title">Questions</h2>
+  <details>
+    <summary>Why pay?</summary>
+    <p>A small fee keeps out spam and bots. Reading stays free.</p>
+  </details>
+  <details>
+    <summary>Why Monero?</summary>
+    <p>It's private. Each invoice has its own address, so payments can't be linked to each other.</p>
+  </details>
+  {{if .Inbox}}
+  <details>
+    <summary>Can people who haven't paid reach me?</summary>
+    <p>Yes. Anyone can reply to, react to, zap and DM members here.</p>
+  </details>
+  {{end}}
+  <details>
+    <summary>What if I pay too little, or too late?</summary>
+    <p>Payments to the same invoice add up, and late ones still count for {{.LateDays}} day{{if ne .LateDays 1}}s{{end}}.</p>
+  </details>
+  <details>
+    <summary>What is nostr?</summary>
+    <p>An open protocol for social media that no one company controls. <a href="https://usenostr.org">Learn more</a>.</p>
+  </details>
 </section>
 {{end}}

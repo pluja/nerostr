@@ -165,11 +165,11 @@ func TestInvoiceLifecycle(t *testing.T) {
 	}
 
 	paidAt := t0.Add(3 * time.Hour)
-	if err := s.MarkPaid(ctx, inv.ID, 2_000_000_000, 2_000_000_000, paidAt); err != nil {
-		t.Fatal(err)
+	if joined, err := s.MarkPaid(ctx, inv.ID, 2_000_000_000, 2_000_000_000, paidAt); err != nil || !joined {
+		t.Fatalf("first MarkPaid: joined=%v err=%v", joined, err)
 	}
-	if err := s.MarkPaid(ctx, inv.ID, 3_000_000_000, 3_000_000_000, paidAt.Add(time.Hour)); err != nil {
-		t.Fatal(err)
+	if joined, err := s.MarkPaid(ctx, inv.ID, 3_000_000_000, 3_000_000_000, paidAt.Add(time.Hour)); err != nil || joined {
+		t.Fatalf("second MarkPaid must be a no-op: joined=%v err=%v", joined, err)
 	}
 	got, _ = s.LatestInvoice(ctx, pk)
 	if !got.Paid() || !got.PaidAt.Equal(paidAt) || got.Confirmed != 2_000_000_000 {
@@ -195,8 +195,8 @@ func TestPaymentDoesNotOverrideBan(t *testing.T) {
 	if err := s.BanPubKey(ctx, pk, "abuse"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.MarkPaid(ctx, inv.ID, 1, 1, time.Now()); err != nil {
-		t.Fatal(err)
+	if joined, err := s.MarkPaid(ctx, inv.ID, 1, 1, time.Now()); err != nil || joined {
+		t.Fatalf("a banned key must not join: joined=%v err=%v", joined, err)
 	}
 	if ok, _ := s.IsMember(ctx, pk); ok {
 		t.Fatal("banned key became a member by paying")
@@ -219,5 +219,19 @@ func TestBackup(t *testing.T) {
 	defer b.Close()
 	if ok, _ := b.IsMember(ctx, pk); !ok {
 		t.Fatal("backup missing member")
+	}
+}
+
+func TestMarkPaidForExistingMember(t *testing.T) {
+	ctx := context.Background()
+	s := open(t)
+	pk := nostr.Generate().Public()
+	s.AddMember(ctx, pk, SourceAdmin, "")
+	inv := &Invoice{PubKey: pk, Address: "a", SubaddrIndex: 9, Amount: 1, CreatedAt: time.Now(), ExpiresAt: time.Now().Add(time.Hour)}
+	if err := s.CreateInvoice(ctx, inv); err != nil {
+		t.Fatal(err)
+	}
+	if joined, err := s.MarkPaid(ctx, inv.ID, 1, 1, time.Now()); err != nil || joined {
+		t.Fatalf("a key that was already a member did not join now: joined=%v err=%v", joined, err)
 	}
 }

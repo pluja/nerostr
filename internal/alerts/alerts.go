@@ -51,6 +51,11 @@ func NewNotifier(key nostr.SecretKey, recipients []nostr.PubKey, lookupRelays []
 	}
 }
 
+// SendTo DMs one key, e.g. a new member, through the same delivery as alerts.
+func (n *Notifier) SendTo(ctx context.Context, to nostr.PubKey, text string) error {
+	return n.send(ctx, to, text)
+}
+
 func (n *Notifier) Notify(ctx context.Context, text string) {
 	for _, pk := range n.recipients {
 		if err := n.send(ctx, pk, text); err != nil {

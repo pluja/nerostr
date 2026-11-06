@@ -25,6 +25,7 @@ import (
 	"github.com/pluja/nerostr/internal/config"
 	"github.com/pluja/nerostr/internal/importer"
 	"github.com/pluja/nerostr/internal/payments"
+	"github.com/pluja/nerostr/internal/pubkey"
 	"github.com/pluja/nerostr/internal/relay"
 	"github.com/pluja/nerostr/internal/store"
 	"github.com/pluja/nerostr/internal/wallet"
@@ -170,6 +171,28 @@ func serve() error {
 		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelDebug),
 	}
 
+	// DMs from the relay's own key: alerts to admins, and welcomes to new members.
+	deliverLocal := func(_ context.Context, evt nostr.Event) error {
+		if err := events.SaveEvent(evt); err != nil && !errors.Is(err, eventstore.ErrDupEvent) {
+			return err
+		}
+		rl.BroadcastEvent(evt)
+		return nil
+	}
+	notifier := alerts.NewNotifier(*cfg.RelayKey, cfg.AlertPubKeys, cfg.AlertRelays, cfg.RelayURL(),
+		deliverLocal, log.With("component", "dm"))
+	if welcome := cfg.WelcomeText(); welcome != "" {
+		pay.OnJoined = func(pk nostr.PubKey) {
+			go func() {
+				ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+				defer cancel()
+				if err := notifier.SendTo(ctx, pk, welcome); err != nil {
+					log.Warn("welcome DM not delivered", "to", pubkey.Short(pk), "err", err)
+				}
+			}()
+		}
+	}
+
 	go pay.Run(ctx)
 	go backupLoop(ctx, st, filepath.Join(cfg.DataDir, "backups"), log)
 
@@ -182,15 +205,7 @@ func serve() error {
 		Log:          log.With("component", "alerts"),
 	}
 	if len(cfg.AlertPubKeys) > 0 {
-		deliverLocal := func(_ context.Context, evt nostr.Event) error {
-			if err := events.SaveEvent(evt); err != nil && !errors.Is(err, eventstore.ErrDupEvent) {
-				return err
-			}
-			rl.BroadcastEvent(evt)
-			return nil
-		}
-		monitor.Notify = alerts.NewNotifier(*cfg.RelayKey, cfg.AlertPubKeys, cfg.AlertRelays, cfg.RelayURL(),
-			deliverLocal, log.With("component", "alerts")).Notify
+		monitor.Notify = notifier.Notify
 	}
 	go monitor.Run(ctx)
 
@@ -199,7 +214,7 @@ func serve() error {
 		log.Info("nerostr listening", "version", version, "addr", cfg.ListenAddr, "relay", cfg.RelayURL(),
 			"admission", cfg.AdmissionAmount.String()+" XMR", "min_confirmations", cfg.MinConfirmations,
 			"admins", len(cfg.AdminPubKeys), "inbox", cfg.Inbox, "alert_recipients", len(cfg.AlertPubKeys),
-			"heartbeat", cfg.HeartbeatURL != "", "relay_pubkey", nip19.EncodeNpub(cfg.RelayKey.Public()))
+			"heartbeat", cfg.HeartbeatURL != "", "welcome_dm", cfg.WelcomeMessage != "", "relay_pubkey", nip19.EncodeNpub(cfg.RelayKey.Public()))
 		errc <- srv.ListenAndServe()
 	}()
 
