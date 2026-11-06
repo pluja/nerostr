@@ -48,7 +48,8 @@ jobs:
         run: make hadolint
 
   images:
-    if: inputs.images != false
+    # On push and pull_request there are no inputs, and null == false in expressions.
+    if: format('{0}', inputs.images) != 'false'
     runs-on: ubuntu-latest
     needs: check
     permissions:
