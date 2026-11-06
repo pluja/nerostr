@@ -99,7 +99,19 @@ func openStores(dir string) (*store.Store, *lmdb.LMDBBackend, error) {
 	return st, events, nil
 }
 
+// v1DataDir is where nerostr v1's compose file mounted its member database.
+const v1DataDir = "/app/nerostr_data/db"
+
+// errV1Layout stops v2 from starting inside a v1 deployment (e.g. pulled through
+// an auto-updated :latest tag), where it would serve an empty member list.
+var errV1Layout = errors.New("found a nerostr v1 database at " + v1DataDir + "; v2 is not an in-place update.\n" +
+	"Keep running v1 (pin the image to :1), or migrate: " +
+	"https://github.com/pluja/nerostr#migrating-from-nerostr-v1-strfry")
+
 func serve() error {
+	if _, err := os.Stat(v1DataDir); err == nil {
+		return errV1Layout
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("invalid configuration:\n%w", err)
@@ -291,7 +303,11 @@ func migrateV1(args []string) error {
 // loadOrCreateKey keeps the relay's own nostr identity stable across restarts.
 func loadOrCreateKey(path string) (nostr.SecretKey, error) {
 	if b, err := os.ReadFile(path); err == nil {
-		return nostr.SecretKeyFromHex(strings.TrimSpace(string(b)))
+		key, err := nostr.SecretKeyFromHex(strings.TrimSpace(string(b)))
+		if err != nil {
+			return nostr.SecretKey{}, fmt.Errorf("%s: %w", path, err)
+		}
+		return key, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return nostr.SecretKey{}, err
 	}
