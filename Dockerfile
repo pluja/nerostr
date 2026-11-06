@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Static build (LMDB needs cgo); xx cross-compiles for the target platform natively.
 
-FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0 AS xx
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.10.0 AS xx
 
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 # hadolint ignore=DL3067
