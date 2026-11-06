@@ -29,7 +29,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
-          go-version-file: go.mod
+          # Latest patch release, so standard library security fixes are always included.
+          go-version: "1.26.x"
+          check-latest: true
       - name: go mod tidy
         run: make tidy-check
       - name: Formatting
