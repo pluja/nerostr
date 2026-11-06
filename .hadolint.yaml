@@ -1,0 +1,5 @@
+ignored:
+  # Distro mirrors drop old package versions, which breaks pinned installs.
+  # Base images and the Monero release hashes are pinned instead.
+  - DL3008
+  - DL3018

@@ -1,0 +1,6 @@
+# Caddy terminates TLS and forwards everything (web pages, websockets, NIP-11,
+# NIP-86) to nerostr. Replace the domain with yours.
+xmr.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8080
+}
