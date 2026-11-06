@@ -54,6 +54,9 @@ type Service struct {
 
 	statusMu sync.RWMutex
 	status   Status
+
+	// OnJoined, if set, runs after a payment makes a key a member. It must not block.
+	OnJoined func(nostr.PubKey)
 }
 
 type Status struct {
@@ -279,11 +282,15 @@ func (s *Service) Check(ctx context.Context) (walletHeight uint64, watching int,
 			continue
 		}
 		if tot.confirmed >= inv.Amount {
-			if err := s.store.MarkPaid(ctx, inv.ID, tot.seen, tot.confirmed, now); err != nil {
+			joined, err := s.store.MarkPaid(ctx, inv.ID, tot.seen, tot.confirmed, now)
+			if err != nil {
 				return walletHeight, len(invoices), fmt.Errorf("marking invoice %d paid: %w", inv.ID, err)
 			}
 			s.log.Info("invoice paid", "pubkey", pubkey.Short(inv.PubKey), "invoice", inv.ID,
-				"received", tot.confirmed.String(), "late", inv.Expired(now))
+				"received", tot.confirmed.String(), "late", inv.Expired(now), "joined", joined)
+			if joined && s.OnJoined != nil {
+				s.OnJoined(inv.PubKey)
+			}
 			continue
 		}
 		if tot.seen != inv.Seen || tot.confirmed != inv.Confirmed {

@@ -356,3 +356,18 @@ func TestStuckWalletIsUnhealthy(t *testing.T) {
 		t.Fatalf("must recover once the height moves: %s", h.svc.Problem())
 	}
 }
+
+func TestOnJoinedRunsOncePerNewMember(t *testing.T) {
+	h := newHarness(t, nil)
+	var joined []nostr.PubKey
+	h.svc.OnJoined = func(pk nostr.PubKey) { joined = append(joined, pk) }
+	pk := nostr.Generate().Public()
+	inv, _ := h.svc.Invoice(context.Background(), pk)
+
+	h.w.pay(inv.SubaddrIndex, "tx1", 2_000_000_000, 1001, 1)
+	h.check(t)
+	h.check(t)
+	if len(joined) != 1 || joined[0] != pk {
+		t.Fatalf("OnJoined calls: %v, want exactly one for the payer", joined)
+	}
+}

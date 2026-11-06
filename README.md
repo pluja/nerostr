@@ -26,6 +26,7 @@ Everyone can read. Only people who paid a small one-time fee in Monero can publi
 - **Private payments.** Every invoice gets a fresh Monero subaddress. A view-only wallet is enough, so the server never holds your spend key.
 - **Payments that don't get lost.** Partial payments add up, and payments that arrive after an invoice expired are still credited (for 30 days by default).
 - **Members stay reachable.** Anyone can reply to, react to, zap and DM a member here, while the relay's feed shows members' posts only.
+- **A welcome DM** to every new member, from the relay's own key (customizable).
 - **Alerts on nostr.** The relay DMs you when payments stop being processed (wallet unreachable or stuck) and when they recover. An optional heartbeat URL catches full outages.
 - **Standard nostr integration.**
   - [NIP-11](https://nips.nostr.com/11) advertises the admission fee and payment page, so clients can show it.
@@ -135,6 +136,7 @@ Configuration is read from environment variables (`.env` with Docker Compose).
 | `INBOX`, `INBOX_KINDS` | `true`, `1,4,6,7,16,1059,1111,9735` | Accept events from non-members that tag a member ([Inbox](#inbox)). |
 | `ALERT_PUBKEYS`, `ALERT_AFTER`, `ALERT_RELAYS` | admins, `600`, popular relays | Who gets alert DMs, after how many seconds of trouble, and where to find their DM relays. |
 | `HEARTBEAT_URL`, `HEARTBEAT_INTERVAL` | , `300` | URL requested periodically while healthy (dead-man switch). |
+| `WELCOME_MESSAGE` | a short welcome | DMed to every key that just paid, from the relay's own key. Supports `{name}`, `{relay}` and `{url}`; `off` disables it. |
 | `RELAY_SECRET_KEY` | generated | The relay's own nostr key (signs alerts, NIP-11 `self`). Kept in `data/nerostr/relay.key` if not set. |
 | `DATA_DIR`, `LISTEN_ADDR`, `LOG_LEVEL` | `/data`, `:8080`, `info` | |
 

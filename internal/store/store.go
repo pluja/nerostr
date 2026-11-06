@@ -424,11 +424,12 @@ func (s *Store) UpdateInvoiceTotals(ctx context.Context, id int64, seen, confirm
 }
 
 // MarkPaid records the payment and grants membership atomically. A banned key
-// keeps its ban: paying does not override an operator decision.
-func (s *Store) MarkPaid(ctx context.Context, id int64, seen, confirmed xmr.Piconero, at time.Time) error {
+// keeps its ban: paying does not override an operator decision. joined reports
+// whether this payment made the key a member, rather than it already being one.
+func (s *Store) MarkPaid(ctx context.Context, id int64, seen, confirmed xmr.Piconero, at time.Time) (joined bool, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer tx.Rollback()
 	var hex string
@@ -436,20 +437,28 @@ func (s *Store) MarkPaid(ctx context.Context, id int64, seen, confirmed xmr.Pico
 		`UPDATE invoices SET seen = ?, confirmed = ?, paid_at = ? WHERE id = ? AND paid_at IS NULL RETURNING pubkey`,
 		toDB(seen), toDB(confirmed), at.Unix(), id).Scan(&hex)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
 	note := "invoice " + strconv.FormatInt(id, 10)
-	if _, err := tx.ExecContext(ctx,
+	res, err := tx.ExecContext(ctx,
 		`INSERT INTO members (pubkey, source, note, created_at)
 		 SELECT ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM banned_pubkeys WHERE pubkey = ?)
 		 ON CONFLICT (pubkey) DO NOTHING`,
-		hex, SourcePayment, note, at.Unix(), hex); err != nil {
-		return err
+		hex, SourcePayment, note, at.Unix(), hex)
+	if err != nil {
+		return false, err
 	}
-	return tx.Commit()
+	added, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return added == 1, nil
 }
 
 // toDB and fromDB convert amounts for SQLite's signed integers. Saturating is

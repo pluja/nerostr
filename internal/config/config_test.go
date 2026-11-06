@@ -151,3 +151,26 @@ func TestAdmissionCap(t *testing.T) {
 		t.Fatalf("expected cap error, got %v", err)
 	}
 }
+
+func TestWelcomeMessage(t *testing.T) {
+	base := map[string]string{"PUBLIC_URL": "https://relay.example.com", "RELAY_NAME": "xmr"}
+	c, err := load(envOf(base))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := c.WelcomeText(); !strings.Contains(got, "Welcome to xmr.") || !strings.Contains(got, "wss://relay.example.com") {
+		t.Fatalf("default welcome: %q", got)
+	}
+
+	base["WELCOME_MESSAGE"] = "Hi from {name}: {url}"
+	c, _ = load(envOf(base))
+	if got := c.WelcomeText(); got != "Hi from xmr: https://relay.example.com" {
+		t.Fatalf("custom welcome: %q", got)
+	}
+
+	base["WELCOME_MESSAGE"] = "off"
+	c, _ = load(envOf(base))
+	if c.WelcomeMessage != "" {
+		t.Fatalf("WELCOME_MESSAGE=off must disable it, got %q", c.WelcomeMessage)
+	}
+}
