@@ -212,8 +212,12 @@ Upgrade it promptly when a new Monero release is out. The FCMP++ hard fork, in p
 v2 replaces the `nerostr` + `strfry` + plugin setup with a single service. Members and events carry over, and v1's files are never modified.
 v1 is the `v0.0.x` series; its documentation stays at the [`v0.0.71` tag](https://github.com/pluja/nerostr/tree/v0.0.71).
 
-v2 is not an in-place update: a v1 compose file pulling `:latest` keeps getting v1, and a v2 image started inside a v1 deployment stops with an error.
-To stay on v1 for now, pin both images in your v1 `docker-compose.yml` to `pluja/nerostr:v0.0.71` and `pluja/nerostr-strfry:v0.0.71`.
+v2 is a migration, not an image update. Until you migrate, pin the v1 images in your v1 `docker-compose.yml`:
+
+```yaml
+image: pluja/nerostr:v0.0.71
+image: pluja/nerostr-strfry@sha256:1ab3e92e7559783e83eeea4926d87d9331026462dad029030c8fa7e7a5d4a19d
+```
 
 The steps assume your v1 directory is `~/nerostr` (with `nerostr_data/`) and v2 goes to `~/nerostr-v2`.
 
@@ -306,16 +310,15 @@ The code is small:
 | [`release`](.github/workflows/release.yml) | `v*` tags | Runs `ci`, then publishes the multi-arch image, static Linux binaries with `SHA256SUMS`, and a GitHub release with generated notes. |
 | [`wallet-rpc`](.github/workflows/wallet-rpc.yml) | changes to `wallet-rpc/`, weekly, manually | Publishes the wallet image, tagged with its Monero version and `latest`. The weekly run picks up Debian security fixes. |
 
-Images go to `ghcr.io/<owner>/`, and to Docker Hub as well when `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are set.
+Images are published to `ghcr.io/<owner>/` with the workflow's own token, so no registry secrets are needed.
 Every image has an SBOM and a signed build-provenance attestation; binaries are attested too.
 Release builds never use the build cache.
 
 One-time setup in the GitHub repository settings:
 
-1. **Environments → New environment `release`.** Under deployment branches and tags, allow only `main` and tags matching `v*`.
-   If you publish to Docker Hub, add `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` as secrets of this environment, not as repository secrets.
-   Then only release jobs can read them.
-2. **After the first publish**, open each package (`nerostr`, `nerostr-wallet-rpc`) under your profile's *Packages*.
+1. **Environment `release`**, which the publishing jobs run in. Allow only `main` and tags matching `v*` to deploy to it.
+2. **A tag ruleset for `v*`**, so only maintainers can create, move or delete release tags.
+3. **After the first publish**, open each package (`nerostr`, `nerostr-wallet-rpc`) under your profile's *Packages*.
    Set its visibility to public: new packages on user accounts start out private.
 
 To release:

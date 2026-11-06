@@ -27,8 +27,6 @@ jobs:
       packages: write  # push images to GHCR
       id-token: write  # sign attestations with the workflow's OIDC identity
       attestations: write  # store the attestations
-    env:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -42,17 +40,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - if: env.DOCKERHUB_USERNAME != ''
-        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6.2.0
         with:
-          images: |
-            name=ghcr.io/${{ github.repository_owner }}/nerostr-wallet-rpc
-            name=docker.io/${{ env.DOCKERHUB_USERNAME }}/nerostr-wallet-rpc,enable=${{ env.DOCKERHUB_USERNAME != '' }}
+          images: ghcr.io/${{ github.repository_owner }}/nerostr-wallet-rpc
           tags: |
             type=raw,value=${{ steps.version.outputs.monero }}
             type=raw,value=latest
