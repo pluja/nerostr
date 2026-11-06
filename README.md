@@ -210,6 +210,11 @@ Upgrade it promptly when a new Monero release is out. The FCMP++ hard fork, in p
 ## Migrating from nerostr v1 (strfry)
 
 v2 replaces the `nerostr` + `strfry` + plugin setup with a single service. Members and events carry over, and v1's files are never modified.
+v1 is the `v0.0.x` series; its documentation stays at the [`v0.0.71` tag](https://github.com/pluja/nerostr/tree/v0.0.71).
+
+v2 is not an in-place update: a v1 compose file pulling `:latest` keeps getting v1, and a v2 image started inside a v1 deployment stops with an error.
+To stay on v1 for now, pin both images in your v1 `docker-compose.yml` to `pluja/nerostr:v0.0.71` and `pluja/nerostr-strfry:v0.0.71`.
+
 The steps assume your v1 directory is `~/nerostr` (with `nerostr_data/`) and v2 goes to `~/nerostr-v2`.
 
 1. **Export events** while v1 keeps running:

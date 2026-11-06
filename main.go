@@ -105,7 +105,7 @@ const v1DataDir = "/app/nerostr_data/db"
 // errV1Layout stops v2 from starting inside a v1 deployment (e.g. pulled through
 // an auto-updated :latest tag), where it would serve an empty member list.
 var errV1Layout = errors.New("found a nerostr v1 database at " + v1DataDir + "; v2 is not an in-place update.\n" +
-	"Keep running v1 (pin the image to :1), or migrate: " +
+	"Keep running v1 by pinning pluja/nerostr and pluja/nerostr-strfry to :v0.0.71, or migrate: " +
 	"https://github.com/pluja/nerostr#migrating-from-nerostr-v1-strfry")
 
 func serve() error {
