@@ -4,36 +4,53 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Title}}</title>
-  <meta name="description" content="A nostr relay paid with Monero. Free to read, one-time payment of {{.Amount}} XMR to publish.">
+  <meta name="description" content="A nostr relay. Free to read. Pay {{.Amount}} XMR once to post.">
   <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#18181b">
   <meta property="og:type" content="website">
   <meta property="og:title" content="{{.Title}}">
-  <meta property="og:description" content="Free to read. Pay once with Monero to publish. No spam.">
+  <meta property="og:description" content="Free to read. Pay once with Monero to post.">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/static/nerostr.webp" type="image/webp">
   <link rel="stylesheet" href="/static/style.css?v={{.Version}}">
   <script src="/static/app.js?v={{.Version}}" defer></script>
-  {{- if .Refresh}}
+  {{- if and .Refresh (not .RefreshOff)}}
   <noscript><meta http-equiv="refresh" content="30"></noscript>
   {{- end}}
 </head>
 <body>
-  <header>
-    <a class="brand" href="/">
-      <img src="/static/xmrlogo.webp" alt="" width="72" height="72">
-      <h1>{{.Name}}</h1>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site">
+    <a class="brand" href="/" aria-label="{{.Name}}, home">
+      <img src="/static/xmrlogo.webp" alt="" width="56" height="56">
+      <span class="brand-name">{{.Name}}</span>
     </a>
-    <p class="tagline">Free to read. Pay once with Monero to publish. No spam.</p>
-    <div class="relay-url">
-      <code id="relay-url">{{.RelayURL}}</code>
-      <button type="button" class="copy" data-copy="{{.RelayURL}}" aria-label="Copy relay URL">copy</button>
-    </div>
+    <p class="tagline">Free to read. Pay once with Monero to post.</p>
   </header>
-  <main>
+  <main id="main">
     {{template "content" .}}
   </main>
-  <footer>
-    <a href="https://github.com/pluja/nerostr">nerostr</a> {{.Version}} · open source · powered by <a href="https://khatru.nostr.technology/">khatru</a> and <a href="https://www.getmonero.org/">Monero</a>
+  <footer class="site">
+    <p><a href="https://github.com/pluja/nerostr">nerostr</a> {{.Version}}</p>
   </footer>
 </body>
 </html>
+{{define "relay-address"}}
+<div class="relay-address">
+  <span class="label" id="relay-label">Relay</span>
+  <div class="field">
+    <code class="select-all" aria-labelledby="relay-label">{{.RelayURL}}</code>
+    <button type="button" class="copy" data-copy="{{.RelayURL}}" hidden>Copy</button>
+  </div>
+</div>
+{{end}}
+{{define "refresh-note"}}
+{{if .Refresh}}
+<noscript>
+  <p class="refresh-note">
+    {{if .RefreshOff}}Auto-refresh is off. <a href="{{.RefreshURL}}">Turn it on</a>
+    {{else}}This page refreshes every 30 seconds. <a href="{{.RefreshURL}}?refresh=off">Stop</a>{{end}}
+  </p>
+</noscript>
+{{end}}
+{{end}}

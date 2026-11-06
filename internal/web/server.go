@@ -104,7 +104,10 @@ type basePage struct {
 	RelayURL string
 	Version  string
 	Amount   string
-	Refresh  bool
+	// Refresh reloads the page for visitors without JavaScript, unless they turned it off.
+	Refresh    bool
+	RefreshOff bool
+	RefreshURL string
 }
 
 func (s *Server) base(title string) basePage {
@@ -118,18 +121,19 @@ func (s *Server) base(title string) basePage {
 }
 
 var errorMessages = map[string]string{
-	"invalid-key": "That doesn't look like a nostr public key. Paste your npub (or hex key).",
+	"invalid-key": "That doesn't look like a nostr public key.",
 	"busy":        payments.ErrBusy.Error() + ".",
 	"wallet":      payments.ErrWallet.Error() + ".",
-	"slow-down":   "Too many requests from your connection. Please wait a minute and try again.",
+	"slow-down":   "Too many requests. Wait a minute and try again.",
 	"banned":      payments.ErrBanned.Error() + ".",
 }
 
 type indexPage struct {
 	basePage
-	Members int
-	Error   string
-	Inbox   bool
+	Members  int
+	Error    string
+	Inbox    bool
+	LateDays int
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -143,6 +147,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		Members:  members,
 		Error:    errorMessages[r.URL.Query().Get("error")],
 		Inbox:    s.cfg.Inbox,
+		LateDays: int(s.payments.Config().LatePaymentWindow.Hours() / 24),
 	})
 }
 
@@ -175,29 +180,36 @@ func (s *Server) handleCreateInvoice(w http.ResponseWriter, r *http.Request) {
 
 type userPage struct {
 	basePage
-	Npub    string
-	Short   string
-	State   string // member, banned, invoice, none
-	Member  *store.Member
-	Invoice *invoiceView
+	Npub  string
+	Short string
+	State string // member, banned, invoice, expired, none
+	// StatusURL is polled by the optional script; empty when there is nothing to wait for.
+	StatusURL   string
+	Member      *store.Member
+	Invoice     *invoiceView
+	WelcomeSent bool
 }
 
 type invoiceView struct {
-	Address       string
-	URI           template.URL
-	Amount        string
-	Seen          string
-	Confirmed     string
-	Remaining     string
-	SeenAny       bool
-	Pending       bool
-	Expired       bool
-	ExpiresAt     int64
+	Address   string
+	Groups    []addressGroup
+	URI       template.URL
+	Amount    string
+	Seen      string
+	Remaining string
+	SeenAny   bool
+	Pending   bool
+	Expired   bool
+	ExpiresIn string
+	// The expiry bar: seconds left out of the invoice's lifetime.
+	SecondsLeft   int64
+	Lifetime      int64
 	Confirmations uint64
-	LateDays      int
-	StatusURL     string
-	QRURL         string
-	CheckURL      string
+	// About two minutes per Monero block.
+	ConfirmMinutes uint64
+	LateDays       int
+	QRURL          string
+	CheckURL       string
 }
 
 func (s *Server) handleUser(w http.ResponseWriter, r *http.Request) {
@@ -224,48 +236,88 @@ func (s *Server) handleUser(w http.ResponseWriter, r *http.Request) {
 	case st.member != nil:
 		page.State = "member"
 		page.Member = st.member
-	case st.invoice != nil && !st.invoice.Expired(time.Now()):
-		page.State = "invoice"
-		page.Invoice = s.invoiceView(npub, st.invoice)
-		page.Refresh = true
+		page.WelcomeSent = s.cfg.WelcomeMessage != "" && st.member.Source == store.SourcePayment
 	case st.invoice != nil:
-		page.State = "expired"
 		page.Invoice = s.invoiceView(npub, st.invoice)
-		page.Refresh = page.Invoice.SeenAny
+		page.State = "invoice"
+		if page.Invoice.Expired {
+			page.State = "expired"
+		}
+		// An expired invoice without payments has nothing left to wait for.
+		page.Refresh = !page.Invoice.Expired || page.Invoice.SeenAny
 	default:
 		page.State = "none"
+	}
+	if page.Refresh {
+		page.RefreshOff = r.URL.Query().Get("refresh") == "off"
+		if !page.RefreshOff {
+			page.StatusURL = "/api/user/" + npub
+		}
+		page.RefreshURL = "/user/" + npub
 	}
 	s.render(w, http.StatusOK, "user", page)
 }
 
 func (s *Server) invoiceView(npub string, inv *store.Invoice) *invoiceView {
+	now := time.Now()
+	left := max(int64(inv.ExpiresAt.Sub(now).Seconds()), 0)
 	return &invoiceView{
 		Address: inv.Address,
+		Groups:  addressGroups(inv.Address),
 		// html/template rejects the monero: scheme; the URI is built only from a
 		// wallet-issued address and URL-encoded parameters.
-		URI:           template.URL(moneroURI(inv)), //nolint:gosec // built from a wallet address and URL-encoded values
-		Amount:        inv.Amount.String(),
-		Seen:          inv.Seen.String(),
-		Confirmed:     inv.Confirmed.String(),
-		Remaining:     inv.Amount.Sub(inv.Seen).String(),
-		SeenAny:       inv.Seen > 0,
-		Pending:       inv.Seen >= inv.Amount && inv.Confirmed < inv.Amount,
-		Expired:       inv.Expired(time.Now()),
-		ExpiresAt:     inv.ExpiresAt.Unix(),
-		Confirmations: s.payments.Config().MinConfirmations,
-		LateDays:      int(s.payments.Config().LatePaymentWindow.Hours() / 24),
-		StatusURL:     "/api/user/" + npub,
-		QRURL:         "/user/" + npub + "/qr.png",
-		CheckURL:      "/user/" + npub + "/check",
+		URI:            template.URL(moneroURI(inv)), //nolint:gosec // built from a wallet address and URL-encoded values
+		Amount:         inv.Amount.String(),
+		Seen:           inv.Seen.String(),
+		Remaining:      inv.Amount.Sub(inv.Seen).String(),
+		SeenAny:        inv.Seen > 0,
+		Pending:        inv.Seen >= inv.Amount && inv.Confirmed < inv.Amount,
+		Expired:        inv.Expired(time.Now()),
+		ExpiresIn:      humanDuration(time.Duration(left) * time.Second),
+		SecondsLeft:    left,
+		Lifetime:       max(int64(inv.ExpiresAt.Sub(inv.CreatedAt).Seconds()), 1),
+		Confirmations:  s.payments.Config().MinConfirmations,
+		ConfirmMinutes: 2 * max(s.payments.Config().MinConfirmations, 1),
+		LateDays:       int(s.payments.Config().LatePaymentWindow.Hours() / 24),
+		QRURL:          "/user/" + npub + "/qr.png",
+		CheckURL:       "/user/" + npub + "/check",
 	}
 }
 
+type addressGroup struct {
+	Text string
+	Edge bool
+}
+
+// addressGroups splits an address into groups of five and marks the first and
+// last, the parts people compare against their wallet.
+func addressGroups(addr string) []addressGroup {
+	const size = 5
+	var groups []addressGroup
+	for i := 0; i < len(addr); i += size {
+		groups = append(groups, addressGroup{Text: addr[i:min(i+size, len(addr))]})
+	}
+	if len(groups) > 0 {
+		groups[0].Edge = true
+		groups[len(groups)-1].Edge = true
+	}
+	return groups
+}
+
+// moneroURI asks for what is still due, so a partly paid invoice is not overpaid.
 func moneroURI(inv *store.Invoice) string {
+	due := inv.Amount.Sub(inv.Seen)
+	if due == 0 {
+		due = inv.Amount
+	}
 	q := url.Values{}
-	q.Set("tx_amount", inv.Amount.String())
+	q.Set("tx_amount", due.String())
 	q.Set("tx_description", "nostr relay admission")
 	return "monero:" + inv.Address + "?" + q.Encode()
 }
+
+// qrSize is also the displayed size: showing the PNG unscaled keeps every module a whole number of pixels.
+const qrSize = 240
 
 func (s *Server) handleQR(w http.ResponseWriter, r *http.Request) {
 	pk, err := pubkey.Parse(r.PathValue("pkey"))
@@ -281,7 +333,7 @@ func (s *Server) handleQR(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, err)
 		return
 	}
-	png, err := qrcode.Encode(moneroURI(&inv), qrcode.Medium, 320)
+	png, err := qrcode.Encode(moneroURI(&inv), qrcode.Medium, qrSize)
 	if err != nil {
 		s.serverError(w, err)
 		return
@@ -493,4 +545,16 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// humanDuration renders the time left on an invoice, e.g. "52 min" or "under a minute".
+func humanDuration(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "under a minute"
+	case d < 2*time.Hour:
+		return strconv.Itoa(int(d.Minutes())) + " min"
+	default:
+		return strconv.Itoa(int(d.Hours())) + " hours"
+	}
 }

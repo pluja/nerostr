@@ -233,7 +233,7 @@ func TestPayToRelayFlow(t *testing.T) {
 	}
 
 	resp, page := e.get(t, "/user/"+npub)
-	if resp.StatusCode != http.StatusOK || !strings.Contains(page, "8FakeSubaddress0001") || !strings.Contains(page, "0.002") {
+	if resp.StatusCode != http.StatusOK || !strings.Contains(page, `data-copy="8FakeSubaddress0001"`) || !strings.Contains(page, "0.002") {
 		t.Fatalf("invoice page: %d\n%s", resp.StatusCode, page)
 	}
 	if !strings.Contains(page, `href="monero:8FakeSubaddress0001?tx_amount=0.002&amp;`) {
@@ -241,6 +241,12 @@ func TestPayToRelayFlow(t *testing.T) {
 	}
 	if !strings.Contains(resp.Header.Get("Content-Security-Policy"), "default-src 'none'") {
 		t.Fatal("missing CSP")
+	}
+	if !strings.Contains(page, `http-equiv="refresh"`) || !strings.Contains(page, "?refresh=off") {
+		t.Fatalf("invoice page should refresh without JavaScript and offer to stop:\n%s", page)
+	}
+	if _, page := e.get(t, "/user/"+npub+"?refresh=off"); strings.Contains(page, `http-equiv="refresh"`) || strings.Contains(page, `data-status-url="/api`) {
+		t.Fatalf("refresh=off still refreshes:\n%s", page)
 	}
 	if resp, _ := e.get(t, "/user/"+npub+"/qr.png"); resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "image/png" {
 		t.Fatalf("qr: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
@@ -275,7 +281,7 @@ func TestPayToRelayFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, page = e.get(t, "/user/"+npub)
-	if !strings.Contains(page, "You're in") {
+	if !strings.Contains(page, "You're in") || strings.Contains(page, `http-equiv="refresh"`) {
 		t.Fatalf("member page:\n%s", page)
 	}
 	if _, body := e.get(t, "/api/status/"+npub); !strings.Contains(body, `"accept"`) {
@@ -301,7 +307,7 @@ func TestPayToRelayFlow(t *testing.T) {
 	}
 
 	// Index page counts the member.
-	if _, page := e.get(t, "/"); !strings.Contains(page, "1 member can publish") {
+	if _, page := e.get(t, "/"); !strings.Contains(page, "<strong>1</strong> member<") {
 		t.Fatalf("index:\n%s", page)
 	}
 }
