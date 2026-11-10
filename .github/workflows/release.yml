@@ -99,11 +99,12 @@ jobs:
           for arch in amd64 arm64; do
             tar -C "dist/linux_${arch}" -czf "release/nerostr_${TAG}_linux_${arch}.tar.gz" nerostr
           done
-          (cd release && sha256sum -- *.tar.gz > SHA256SUMS)
+          cp docker-compose.yml example.env release/
+          (cd release && sha256sum -- *.tar.gz docker-compose.yml example.env > SHA256SUMS)
           cat release/SHA256SUMS
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
         with:
-          subject-path: release/*.tar.gz
+          subject-path: release/*
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: binaries
@@ -143,6 +144,11 @@ jobs:
           \`\`\`
           gh attestation verify oci://ghcr.io/${OWNER}/nerostr:${TAG#v} --owner ${OWNER}
           \`\`\`
+
+          ## Compose files
+
+          \`docker-compose.yml\` and \`example.env\` are attached.
+          See the [README](https://github.com/${OWNER}/nerostr#self-hosting) for setup.
 
           ## Binaries
 

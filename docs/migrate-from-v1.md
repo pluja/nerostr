@@ -23,7 +23,8 @@ The steps assume your v1 directory is `~/nerostr` (with `nerostr_data/`) and v2 
 2. **Prepare v2** next to it:
 
    ```bash
-   git clone https://github.com/pluja/nerostr ~/nerostr-v2 && cd ~/nerostr-v2 &&
+   mkdir ~/nerostr-v2 && cd ~/nerostr-v2 &&
+   curl -fsSL --remote-name-all https://github.com/pluja/nerostr/releases/latest/download/{docker-compose.yml,example.env} &&
    cp example.env .env && mkdir -p data/nerostr data/wallet && sudo chown -R 1000:1000 data
    ```
 

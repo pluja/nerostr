@@ -69,12 +69,12 @@ Inbox events are rate-limited per IP and may tag at most 20 people.
 
 You need a small Linux server with Docker, a domain, and a Monero wallet.
 
-1. Get the files:
+1. Get the compose file and the example configuration. The images are pulled from `ghcr.io`, so you don't need the source:
 
    ```bash
-   git clone https://github.com/pluja/nerostr && cd nerostr
-   cp example.env .env
-   mkdir -p data/nerostr data/wallet
+   mkdir nerostr && cd nerostr &&
+   curl -fsSL --remote-name-all https://github.com/pluja/nerostr/releases/latest/download/{docker-compose.yml,example.env} &&
+   cp example.env .env && mkdir -p data/nerostr data/wallet
    ```
 
 2. Put a wallet in `data/wallet/`. **Use a view-only wallet**: it can create subaddresses and see incoming payments, but cannot spend.
@@ -201,10 +201,15 @@ Otherwise old subaddresses won't be detected.
 ## Upgrading
 
 ```bash
-git pull
-docker compose pull      # or: docker compose build
+docker compose pull
 docker compose up -d
 ```
+
+The nerostr image follows the `2` tag, so this stays within v2. Check the release notes for new options,
+and for releases that change `docker-compose.yml`, such as a new Monero version. Then download that release's file:
+`curl -fsSLO https://github.com/pluja/nerostr/releases/download/<version>/docker-compose.yml`.
+Keep your own changes in `docker-compose.override.yml`, so the download doesn't overwrite them.
+If you build from a git clone instead, run `git pull` and `docker compose build` before `docker compose up -d`.
 
 The Monero version is pinned in [`wallet-rpc/Dockerfile`](wallet-rpc/Dockerfile), with checksums from the signed `hashes.txt`.
 Upgrade it promptly when a new Monero release is out. The FCMP++ hard fork, in particular, will require one.
