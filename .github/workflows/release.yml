@@ -99,8 +99,8 @@ jobs:
           for arch in amd64 arm64; do
             tar -C "dist/linux_${arch}" -czf "release/nerostr_${TAG}_linux_${arch}.tar.gz" nerostr
           done
-          cp docker-compose.yml example.env release/
-          (cd release && sha256sum -- *.tar.gz docker-compose.yml example.env > SHA256SUMS)
+          cp docker-compose.yml example.env deploy/migrate-v1.sh release/
+          (cd release && sha256sum -- *.tar.gz docker-compose.yml example.env migrate-v1.sh > SHA256SUMS)
           cat release/SHA256SUMS
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
         with:
@@ -147,8 +147,9 @@ jobs:
 
           ## Compose files
 
-          \`docker-compose.yml\` and \`example.env\` are attached.
-          See the [README](https://github.com/${OWNER}/nerostr#self-hosting) for setup.
+          \`docker-compose.yml\`, \`example.env\` and \`migrate-v1.sh\` are attached.
+          See the [README](https://github.com/${OWNER}/nerostr#self-hosting) for setup,
+          and the [migration guide](https://github.com/${OWNER}/nerostr/blob/${TAG}/docs/migrate-from-v1.md) for v1 installs.
 
           ## Binaries
 

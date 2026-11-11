@@ -217,7 +217,7 @@ Upgrade it promptly when a new Monero release is out. The FCMP++ hard fork, in p
 ## Migrating from nerostr v1 (strfry)
 
 v2 is not an in-place update of v1 (the `v0.0.x` series, with strfry). Until you migrate, pin the v1 images.
-The [migration guide](docs/migrate-from-v1.md) explains how, and walks through the migration step by step.
+The [migration guide](docs/migrate-from-v1.md) explains how, and covers the migration itself: with a script that does it for you, or step by step by hand.
 
 ## Development
 
